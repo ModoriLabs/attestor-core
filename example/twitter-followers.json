@@ -15,7 +15,7 @@
   },
   "secretParams": {
     "headers": {
-      "Authorization": "Bearer YOUR_TWITTER_API_KEY"
+      "Authorization": "Bearer {{TWITTER_TOKEN}}"
     }
   }
 }
