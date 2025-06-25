@@ -1,0 +1,57 @@
+{
+    "name": "http",
+    "description": [
+        "Tossbank verifier - Extract transaction details from Tossbank document verification API",
+        "Retrieves remittance confirmation data including sender, recipient, amount, and bank details"
+    ],
+    "params": {
+        "method": "GET",
+        "url": "https://api.tossbank.com/api-public/document/view/{{URL_PARAMS_1}}/{{URL_PARAMS_GRD}}",
+        "responseMatches": [
+          {
+            "type": "regex",
+            "value": "<table[^>]*class=\"table table--vertical-align-top mt-16\"[^>]*>.*?<tbody[^>]*class=\"table__tbody-row\"[^>]*>.*?<tr>.*?(?:<td[^>]*>[^<]*</td>\\s*){0}<td[^>]*>(?<transactionDate>[^<]+)</td>"
+          },
+          {
+            "type": "regex",
+            "value": "<table[^>]*class=\"table table--vertical-align-top mt-16\"[^>]*>.*?<tbody[^>]*class=\"table__tbody-row\"[^>]*>.*?<tr>.*?(?:<td[^>]*>[^<]*</td>\\s*){1}<td[^>]*>(?<recipientName>[^<]+)</td>"
+          },
+          {
+            "type": "regex",
+            "value": "<table[^>]*class=\"table table--vertical-align-top mt-16\"[^>]*>.*?<tbody[^>]*class=\"table__tbody-row\"[^>]*>.*?<tr>.*?(?:<td[^>]*>[^<]*</td>\\s*){2}<td[^>]*>(?<senderName>[^<]+)</td>"
+          },
+          {
+            "type": "regex",
+            "value": "<table[^>]*class=\"table table--vertical-align-top mt-16\"[^>]*>.*?<tbody[^>]*class=\"table__tbody-row\"[^>]*>.*?<tr>.*?(?:<td[^>]*>[^<]*</td>\\s*){3}<td[^>]*>(?<transactionAmount>[^<]+)</td>"
+          },
+          {
+            "type": "regex",
+            "value": "<table[^>]*class=\"table table--vertical-align-top mt-16\"[^>]*>.*?<tbody[^>]*class=\"table__tbody-row\"[^>]*>.*?<tr>.*?(?:<td[^>]*>[^<]*</td>\\s*){4}<td[^>]*>(?<sendingBankAccount>[^<]+)</td>"
+          },
+          {
+            "type": "regex",
+            "value": "<table[^>]*class=\"table table--vertical-align-top mt-16\"[^>]*>.*?<tbody[^>]*class=\"table__tbody-row\"[^>]*>.*?<tr>.*?(?:<td[^>]*>[^<]*</td>\\s*){5}<td[^>]*>(?<receivingBankAccount>[^<]+)</td>"
+          },
+          {
+            "type": "regex",
+            "value": "<table[^>]*class=\"table table--vertical-align-top mt-16\"[^>]*>.*?<tbody[^>]*class=\"table__tbody-row\"[^>]*>.*?<tr>.*?(?:<td[^>]*>[^<]*</td>\\s*){6}<td[^>]*>(?<senderNickname>[^<]+)</td>"
+          },
+          {
+            "type": "regex",
+            "value": "<table[^>]*class=\"footer-table\"[^>]*>.*?<tr>.*?<td[^>]*class=\"content\"[^>]*>(?<issueDate>[^<]+)</td>"
+          },
+          {
+            "type": "regex",
+            "value": "<h1[^>]*>(?<documentTitle>[^<]+)</h1>"
+          }
+        ],
+        "paramValues": {
+            "URL_PARAMS_1": "2025-06-18",
+            "URL_PARAMS_GRD": "4116-ALQE-QRHYSDDU"
+        }
+    },
+    "secretParams": {
+        "headers": {
+        }
+    }
+}
