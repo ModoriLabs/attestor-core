@@ -1,40 +1,40 @@
 # ChaCha20 Noir Circuit Integration
 
-本模块将 ChaCha20 对称加密算法的 Noir 零知识证明电路集成到 attestor-core 项目中。
+This module integrates ChaCha20 symmetric encryption algorithm's Noir zero-knowledge proof circuits into the attestor-core project.
 
-## 功能特性
+## Features
 
-- ✅ **ChaCha20 Noir 电路支持**: 集成了完整的 ChaCha20 Noir 零知识证明电路
-- ✅ **Witness 生成**: 支持从 ChaCha20 输入数据生成 witness
-- ✅ **证明生成**: 使用 Barretenberg 后端生成 UltraHonk 证明
-- ✅ **证明验证**: 完整的证明验证功能
-- ✅ **类型安全**: 完整的 TypeScript 类型定义
-- ✅ **错误处理**: 优雅的错误处理和验证
+- ✅ **ChaCha20 Noir Circuit Support**: Complete integration of ChaCha20 Noir zero-knowledge proof circuits
+- ✅ **Witness Generation**: Support for generating witnesses from ChaCha20 input data
+- ✅ **Proof Generation**: Generate UltraHonk proofs using Barretenberg backend
+- ✅ **Proof Verification**: Complete proof verification functionality
+- ✅ **Type Safety**: Comprehensive TypeScript type definitions
+- ✅ **Error Handling**: Graceful error handling and validation
 
-## 目录结构
+## Directory Structure
 
 ```
 src/zk/noir/
-├── chacha20/           # ChaCha20 电路资源文件
-│   └── chacha20.json   # 编译后的 Noir 电路
-├── types.ts            # 类型定义
-├── utils.ts            # 工具函数
-├── operator.ts         # ZK 操作器实现
-├── fetcher.ts          # 文件获取器
-├── chacha20-helper.ts  # ChaCha20 加密辅助函数
-├── index.ts            # 模块入口
-└── README.md           # 本文档
+├── chacha20/           # ChaCha20 circuit resource files
+│   └── chacha20.json   # Compiled Noir circuit
+├── types.ts            # Type definitions
+├── utils.ts            # Utility functions
+├── operator.ts         # ZK operator implementation
+├── fetcher.ts          # File fetcher
+├── chacha20-helper.ts  # ChaCha20 encryption helper functions
+├── index.ts            # Module entry point
+└── README.md           # This documentation
 ```
 
-## 快速开始
+## Quick Start
 
-### 1. 基本使用
+### 1. Basic Usage
 
 ```typescript
 import { makeNoirZKOperator, createDefaultFetcher } from '../zk/noir'
 import { generateChaCha20TestData } from '../zk/noir/chacha20-helper'
 
-// 创建 ZK 操作器
+// Create ZK operator
 const fetcher = createDefaultFetcher()
 const zkOperator = makeNoirZKOperator({
   algorithm: 'chacha20',
@@ -45,7 +45,7 @@ const zkOperator = makeNoirZKOperator({
   }
 })
 
-// 生成测试数据
+// Generate test data
 const testData = generateChaCha20TestData()
 const input = {
   key: testData.key,
@@ -55,13 +55,13 @@ const input = {
   out: testData.ciphertext
 }
 
-// 生成 witness
+// Generate witness
 const witness = await zkOperator.generateWitness(input)
 
-// 生成证明
+// Generate proof
 const proofResult = await zkOperator.groth16Prove(witness)
 
-// 验证证明
+// Verify proof
 const publicSignals = {
   nonce: testData.nonce,
   counter: testData.counter,
@@ -71,83 +71,87 @@ const publicSignals = {
 const isValid = await zkOperator.groth16Verify(publicSignals, proofResult.proof)
 ```
 
-### 2. 运行示例
+### 2. Running Examples
 
 ```bash
-# 运行完整示例
+# Run complete example
 npx ts-node src/examples/chacha20-noir-example.ts
 
-# 运行测试
+# Run tests
 npm test -- --testPathPattern=test.noir-chacha20.ts
 ```
 
-## API 参考
+### 3. Integration with Existing Project
+
+In `src/utils/zk.ts`, the Noir operator has been integrated into the existing ZK utilities:
+
+## API Reference
 
 ### makeNoirZKOperator(options)
 
-创建 ChaCha20 Noir ZK 操作器。
+Create ChaCha20 Noir ZK operator.
 
-**参数:**
-- `algorithm`: 算法名称，固定为 `'chacha20'`
-- `fetcher`: 文件获取器实例
-- `options`: 配置选项
-  - `threads`: Barretenberg 后端线程数（默认: 1）
-  - `maxProofConcurrency`: 最大并发证明数（默认: 2）
+**Parameters:**
+- `algorithm`: Algorithm name, fixed as `'chacha20'`
+- `fetcher`: File fetcher instance
+- `options`: Configuration options
+  - `threads`: Barretenberg backend thread count (default: 1)
+  - `maxProofConcurrency`: Maximum concurrent proof count (default: 2)
 
-**返回:** ZKOperator 实例
+**Returns:** ZKOperator instance
 
-### ZKOperator 方法
+### ZKOperator Methods
 
 #### generateWitness(input, logger?)
 
-从输入数据生成 witness。
+Generate witness from input data.
 
-**参数:**
-- `input`: ZKProofInput - ChaCha20 输入数据
-- `logger?`: Logger - 可选的日志记录器
+**Parameters:**
+- `input`: ZKProofInput - ChaCha20 input data
+- `logger?`: Logger - Optional logger
 
-**返回:** Promise<Uint8Array> - 生成的 witness
+**Returns:** Promise<Uint8Array> - Generated witness
 
 #### groth16Prove(witness, logger?)
 
-生成零知识证明。
+Generate zero-knowledge proof.
 
-**参数:**
-- `witness`: Uint8Array - witness 数据
-- `logger?`: Logger - 可选的日志记录器
+**Parameters:**
+- `witness`: Uint8Array - Witness data
+- `logger?`: Logger - Optional logger
 
-**返回:** Promise<{ proof: Uint8Array }> - 生成的证明
+**Returns:** Promise<{ proof: Uint8Array }> - Generated proof
 
 #### groth16Verify(publicSignals, proof, logger?)
 
-验证零知识证明。
+Verify zero-knowledge proof.
 
-**参数:**
-- `publicSignals`: ZKProofPublicSignals - 公共信号
-- `proof`: Uint8Array - 证明数据
-- `logger?`: Logger - 可选的日志记录器
+**Parameters:**
+- `publicSignals`: ZKProofPublicSignals - Public signals
+- `proof`: Uint8Array - Proof data
+- `logger?`: Logger - Optional logger
 
-**返回:** Promise<boolean> - 验证结果
+**Returns:** Promise<boolean> - Verification result
 
-## 类型定义
+## Type Definitions
 
 ### ZKProofInput
 
-ChaCha20 电路的输入数据格式：
+Input data format for ChaCha20 circuit:
 
 ```typescript
 interface ZKProofInput {
-  key: Uint8Array      // 32字节密钥
-  nonce: Uint8Array    // 12字节随机数
-  counter: number      // 计数器值
-  in: Uint8Array       // 128字节明文（32个字）
-  out: Uint8Array      // 128字节密文
+  key: Uint8Array      // 32-byte key
+  nonce: Uint8Array    // 12-byte nonce
+  counter: number      // Counter value
+  in: Uint8Array       // 128-byte plaintext (32 words)
+  out: Uint8Array      // 128-byte ciphertext
 }
 ```
 
 ### ZKProofPublicSignals
 
-证明验证时的公共信号：
+Public signals for proof verification:
 
 ```typescript
 interface ZKProofPublicSignals {
@@ -158,58 +162,58 @@ interface ZKProofPublicSignals {
 }
 ```
 
-## 性能指标
+## Performance Metrics
 
-基于测试环境的性能数据：
+Performance data based on test environment:
 
-- **Witness 生成**: ~150ms
-- **证明生成**: ~5000ms
-- **证明验证**: ~10ms
-- **Witness 大小**: ~51KB
-- **证明大小**: ~42KB
+- **Witness Generation**: ~150ms
+- **Proof Generation**: ~5000ms
+- **Proof Verification**: ~10ms
+- **Witness Size**: ~51KB
+- **Proof Size**: ~42KB
 
-## 依赖项
+## Dependencies
 
-本模块依赖以下核心包：
+This module depends on the following core packages:
 
-- `@noir-lang/noir_js`: Noir 电路执行
-- `@aztec/bb.js`: Barretenberg 证明后端
-- `js-base64`: Base64 编码支持
-- `p-queue`: 并发控制
+- `@noir-lang/noir_js`: Noir circuit execution
+- `@aztec/bb.js`: Barretenberg proof backend
+- `js-base64`: Base64 encoding support
+- `p-queue`: Concurrency control
 
-## 测试
+## Testing
 
-运行 ChaCha20 Noir 集成测试：
+Run ChaCha20 Noir integration tests:
 
 ```bash
 npm test -- --testPathPattern=test.noir-chacha20.ts
 ```
 
-测试覆盖：
-- ✅ Witness 生成
-- ✅ 证明生成和验证
-- ✅ 错误输入处理
-- ✅ 类型验证
+Test coverage:
+- ✅ Witness generation
+- ✅ Proof generation and verification
+- ✅ Error input handling
+- ✅ Type validation
 
-## 故障排除
+## Troubleshooting
 
-### 常见问题
+### Common Issues
 
-1. **电路文件未找到**
-   - 确保 `src/zk/noir/chacha20/chacha20.json` 文件存在
-   - 检查文件获取器配置
+1. **Circuit file not found**
+   - Ensure `src/zk/noir/chacha20/chacha20.json` file exists
+   - Check file fetcher configuration
 
-2. **Witness 生成失败**
-   - 验证输入数据格式和大小
-   - 确保密文是正确的 ChaCha20 加密结果
+2. **Witness generation failed**
+   - Verify input data format and size
+   - Ensure ciphertext is correct ChaCha20 encryption result
 
-3. **证明验证失败**
-   - 检查公共信号是否正确传递
-   - 确保证明数据完整性
+3. **Proof verification failed**
+   - Check if public signals are correctly passed
+   - Ensure proof data integrity
 
-### 调试技巧
+### Debugging Tips
 
-启用详细日志：
+Enable verbose logging:
 
 ```typescript
 const logger = {
@@ -221,10 +225,10 @@ const logger = {
 const witness = await zkOperator.generateWitness(input, logger)
 ```
 
-## 贡献
+## Contributing
 
-欢迎提交 Issue 和 Pull Request 来改进本模块。
+Welcome to submit Issues and Pull Requests to improve this module.
 
-## 许可证
+## License
 
-本项目遵循 MIT 许可证。
+This project follows the MIT License.
