@@ -15,6 +15,8 @@ import {
 	verifyProof,
 	ZKEngine,
 	ZKOperator } from '@reclaimprotocol/zk-symmetric-crypto'
+import { makeBarretenbergZKOperator } from 'src/zk/noir/operator'
+import { createDefaultFetcher } from 'src/zk/noir/fetcher'
 import { DEFAULT_REMOTE_FILE_FETCH_BASE_URL, DEFAULT_ZK_CONCURRENCY, MAX_ZK_CHUNKS, TOPRF_DOMAIN_SEPARATOR } from 'src/config'
 import { MessageReveal_MessageRevealZk as ZKReveal, MessageReveal_ZKProof as ZKProof, ZKProofEngine } from 'src/proto/api'
 import { CompleteTLSPacket, Logger, OPRFOperators, PrepareZKProofsBaseOpts, TOPRFProofParams, ZKOperators, ZKRevealInfo } from 'src/types'
@@ -459,7 +461,7 @@ export async function verifyZkPacket(
 				publicInput: {
 					ciphertext: ciphertextChunk,
 					iv: nonce,
-					offset: chunkIndex
+					offsetBytes: startIdx
 				},
 				logger,
 				...(
@@ -515,9 +517,18 @@ const oprfEngines: {
 	[z in ZKEngine]?: { [E in EncryptionAlgorithm]?: OPRFOperator }
 } = {}
 
-const operatorMakers: { [z in ZKEngine]?: (opts: MakeZKOperatorOpts<{}>) => ZKOperator } = {
+export const makeNoirZkOperator = (opts: MakeZKOperatorOpts<{}>): ZKOperator => {
+	return makeBarretenbergZKOperator({
+		algorithm: opts.algorithm,
+		fetcher: createDefaultFetcher(),
+		options: {}
+	})
+}
+
+const operatorMakers: { [z in ZKEngine | 'noir']?: (opts: MakeZKOperatorOpts<{}>) => ZKOperator } = {
 	'snarkjs': makeSnarkJsZKOperator,
 	'gnark': makeGnarkZkOperator,
+	'noir': makeNoirZkOperator,
 }
 
 const OPRF_OPERATOR_MAKERS: { [z in ZKEngine]?: MakeOPRFOperator<{}> } = {
@@ -526,13 +537,13 @@ const OPRF_OPERATOR_MAKERS: { [z in ZKEngine]?: MakeOPRFOperator<{}> } = {
 
 export function makeDefaultZkOperator(
 	algorithm: EncryptionAlgorithm,
-	zkEngine: ZKEngine,
+	zkEngine: ZKEngine | 'noir',
 	logger: Logger,
 ) {
-	let zkOperators = zkEngines[zkEngine]
+	let zkOperators = zkEngines[zkEngine as ZKEngine]
 	if(!zkOperators) {
-		zkEngines[zkEngine] = {}
-		zkOperators = zkEngines[zkEngine]
+		zkEngines[zkEngine as ZKEngine] = {}
+		zkOperators = zkEngines[zkEngine as ZKEngine]!
 	}
 
 	if(!zkOperators[algorithm]) {
@@ -553,7 +564,7 @@ export function makeDefaultZkOperator(
 		zkOperators[algorithm] = maker({ algorithm, fetcher })
 	}
 
-	return zkOperators[algorithm]
+	return zkOperators[algorithm]!
 }
 
 export function makeDefaultOPRFOperator(
@@ -597,17 +608,25 @@ export function getEngineString(engine: ZKProofEngine) {
 		return 'snarkjs'
 	}
 
+	if(engine === ZKProofEngine.ZK_ENGINE_NOIR) {
+		return 'noir'
+	}
+
 	throw new Error(`Unknown ZK engine: ${engine}`)
 }
 
 
-export function getEngineProto(engine: ZKEngine) {
+export function getEngineProto(engine: ZKEngine | 'noir') {
 	if(engine === 'gnark') {
 		return ZKProofEngine.ZK_ENGINE_GNARK
 	}
 
 	if(engine === 'snarkjs') {
 		return ZKProofEngine.ZK_ENGINE_SNARKJS
+	}
+
+	if(engine === 'noir') {
+		return ZKProofEngine.ZK_ENGINE_NOIR
 	}
 
 	throw new Error(`Unknown ZK engine: ${engine}`)
@@ -647,11 +666,11 @@ function getProofGenerationParamsForChunk(
 	}
 
 	return {
-		startIdx,
-		redactedPlaintext: plaintextChunk,
-		privateInput: { key },
-		publicInput: { ciphertext: ciphertextChunk, iv, offset: offsetChunks },
-		toprf
-	}
+			startIdx,
+			redactedPlaintext: plaintextChunk,
+			privateInput: { key },
+			publicInput: { ciphertext: ciphertextChunk, iv, offsetBytes: startIdx },
+			toprf
+		}
 }
 
