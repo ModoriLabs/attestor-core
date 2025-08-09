@@ -2,27 +2,29 @@ import {
 	areUint8ArraysEqual,
 	CipherSuite,
 	CONTENT_TYPE_MAP,
-	crypto, decryptWrappedRecord,
+	crypto,
+	decryptWrappedRecord,
 	PACKET_TYPE,
 	strToUint8Array,
-	SUPPORTED_CIPHER_SUITE_MAP, TLSProtocolVersion,
-	uint8ArrayToDataView
+	SUPPORTED_CIPHER_SUITE_MAP,
+	TLSProtocolVersion,
+	uint8ArrayToDataView,
 } from '@reclaimprotocol/tls'
-import { REDACTION_CHAR_CODE } from '@reclaimprotocol/zk-symmetric-crypto'
+import { REDACTION_CHAR_CODE } from 'zk-symmetric-crypto-test'
 import { RPCMessage, RPCMessages } from 'src/proto/api'
 import {
 	CompleteTLSPacket,
-	IDecryptedTranscript, IDecryptedTranscriptMessage,
+	IDecryptedTranscript,
+	IDecryptedTranscriptMessage,
 	ProviderField,
 	RPCEvent,
 	RPCEventMap,
 	RPCEventType,
 	RPCType,
-	Transcript
+	Transcript,
 } from 'src/types'
 
-const DEFAULT_REDACTION_DATA = new Uint8Array(4)
-	.fill(REDACTION_CHAR_CODE)
+const DEFAULT_REDACTION_DATA = new Uint8Array(4).fill(REDACTION_CHAR_CODE)
 
 export function uint8ArrayToStr(arr: Uint8Array) {
 	return new TextDecoder().decode(arr)
@@ -50,7 +52,7 @@ export const unixTimestampSeconds = () => Math.floor(Date.now() / 1000)
  */
 export function findIndexInUint8Array(
 	haystack: Uint8Array,
-	needle: Uint8Array,
+	needle: Uint8Array
 ) {
 	for(let i = 0; i < haystack.length; i++) {
 		if(areUint8ArraysEqual(haystack.slice(i, i + needle.length), needle)) {
@@ -70,9 +72,7 @@ export function findIndexInUint8Array(
 export function uint8ArrayToBinaryStr(buf: Uint8Array) {
 	let ret = ''
 	for(const v of buf) {
-		(
-			ret += String.fromCharCode(v)
-		)
+		ret += String.fromCharCode(v)
 	}
 
 	return ret
@@ -118,9 +118,7 @@ export function getPureCiphertext(
 	// 16 => auth tag length
 	content = content.slice(0, -16)
 
-	const {
-		ivLength: fixedIvLength,
-	} = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite]
+	const { ivLength: fixedIvLength } = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite]
 	// 12 => total IV length
 	const recordIvLength = 12 - fixedIvLength
 	// record IV is prefixed to the ciphertext
@@ -129,38 +127,34 @@ export function getPureCiphertext(
 	return content
 }
 
-
 /**
  * Get the 8 byte IV part that's stored in the record for some cipher suites
  * @param content content w/o header
  * @param cipherSuite
  */
-export function getRecordIV(
-	content: Uint8Array,
-	cipherSuite: CipherSuite
-) {
+export function getRecordIV(content: Uint8Array, cipherSuite: CipherSuite) {
 	// assert that the cipher suite is supported
 	getZkAlgorithmForCipherSuite(cipherSuite)
 
-	const {
-		ivLength: fixedIvLength,
-	} = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite]
+	const { ivLength: fixedIvLength } = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite]
 	// 12 => total IV length
 	const recordIvLength = 12 - fixedIvLength
 	return content.slice(0, recordIvLength)
 }
 
-export function getProviderValue<P, S, T>(params: P, fn: ProviderField<P, S, T>, secretParams?: S) {
+export function getProviderValue<P, S, T>(
+	params: P,
+	fn: ProviderField<P, S, T>,
+	secretParams?: S
+) {
 	return typeof fn === 'function'
-		// @ts-ignore
-		? fn(params, secretParams) as T
+		? // @ts-ignore
+		(fn(params, secretParams) as T)
 		: fn
 }
 
 export function generateRpcMessageId() {
-	return uint8ArrayToDataView(
-		crypto.randomBytes(8)
-	).getUint32(0)
+	return uint8ArrayToDataView(crypto.randomBytes(8)).getUint32(0)
 }
 
 /**
@@ -195,14 +189,14 @@ export function getRpcTypeFromKey(key: string) {
 	if(key.endsWith('Request')) {
 		return {
 			type: key.slice(0, -7) as RPCType,
-			direction: 'request' as const
+			direction: 'request' as const,
 		}
 	}
 
 	if(key.endsWith('Response')) {
 		return {
 			type: key.slice(0, -8) as RPCType,
-			direction: 'response' as const
+			direction: 'response' as const,
 		}
 	}
 }
@@ -227,14 +221,12 @@ export function isApplicationData(
 	packet: CompleteTLSPacket,
 	tlsVersion: string | undefined
 ) {
-	return packet.type === 'ciphertext'
-		&& (
-			packet.contentType === 'APPLICATION_DATA'
-			|| (
-				packet.data[0] === PACKET_TYPE.WRAPPED_RECORD
-				&& tlsVersion === 'TLS1_2'
-			)
-		)
+	return (
+		packet.type === 'ciphertext' &&
+    (packet.contentType === 'APPLICATION_DATA' ||
+      (packet.data[0] === PACKET_TYPE.WRAPPED_RECORD &&
+        tlsVersion === 'TLS1_2'))
+	)
 }
 
 /**
@@ -270,7 +262,7 @@ export function getRpcRequest(msg: RPCMessage) {
 	if(msg.requestError) {
 		return {
 			direction: 'response' as const,
-			type: 'error' as const
+			type: 'error' as const,
 		}
 	}
 
@@ -293,9 +285,10 @@ export function getRpcRequest(msg: RPCMessage) {
  * and returns them. Removes the "contentType" suffix from the message.
  * in TLS 1.3
  */
-export function extractApplicationDataFromTranscript(
-	{ transcript, tlsVersion }: IDecryptedTranscript,
-) {
+export function extractApplicationDataFromTranscript({
+	transcript,
+	tlsVersion,
+}: IDecryptedTranscript) {
 	const msgs: Transcript<Uint8Array> = []
 	for(const m of transcript) {
 		let message: Uint8Array
@@ -305,12 +298,12 @@ export function extractApplicationDataFromTranscript(
 			if(!m.plaintextLength) {
 				message = DEFAULT_REDACTION_DATA
 			} else {
-				const len = tlsVersion === 'TLS1_3'
-					// remove content type suffix
-					? m.plaintextLength - 1
-					: m.plaintextLength
-				message = new Uint8Array(len)
-					.fill(REDACTION_CHAR_CODE)
+				const len =
+          tlsVersion === 'TLS1_3'
+          	? // remove content type suffix
+          	m.plaintextLength - 1
+          	: m.plaintextLength
+				message = new Uint8Array(len).fill(REDACTION_CHAR_CODE)
 			}
 			// otherwise, we need to check the content type
 		} else if(tlsVersion === 'TLS1_3') {
@@ -333,14 +326,18 @@ export function extractApplicationDataFromTranscript(
 }
 
 export type HandshakeTranscript<T> = {
-	sender: 'client' | 'server'
-	index: number
-	message: T
-}[]
+  sender: 'client' | 'server'
+  index: number
+  message: T
+}[];
 
-export function extractHandshakeFromTranscript(
-	{ transcript, tlsVersion }: { transcript: IDecryptedTranscriptMessage[], tlsVersion: TLSProtocolVersion }
-) {
+export function extractHandshakeFromTranscript({
+	transcript,
+	tlsVersion,
+}: {
+  transcript: IDecryptedTranscriptMessage[]
+  tlsVersion: TLSProtocolVersion
+}) {
 	const msgs: HandshakeTranscript<Uint8Array> = []
 	for(const [i, m] of transcript.entries()) {
 		if(m.redacted) {
@@ -370,37 +367,38 @@ export function extractHandshakeFromTranscript(
 		}
 
 		msgs.push({ message, sender: m.sender, index: i })
-
 	}
 
 	return msgs
 }
 
-export async function decryptDirect(directReveal, cipherSuite: CipherSuite, recordHeader: Uint8Array, serverTlsVersion: TLSProtocolVersion, content: Uint8Array) {
+export async function decryptDirect(
+	directReveal,
+	cipherSuite: CipherSuite,
+	recordHeader: Uint8Array,
+	serverTlsVersion: TLSProtocolVersion,
+	content: Uint8Array
+) {
 	const { key, iv, recordNumber } = directReveal
 	const { cipher } = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite]
 	const importedKey = await crypto.importKey(cipher, key)
-	return await decryptWrappedRecord(
-		content,
-		{
-			iv,
-			key: importedKey,
-			recordHeader,
-			recordNumber,
-			version: serverTlsVersion,
-			cipherSuite,
-		}
-	)
+	return await decryptWrappedRecord(content, {
+		iv,
+		key: importedKey,
+		recordHeader,
+		recordNumber,
+		version: serverTlsVersion,
+		cipherSuite,
+	})
 }
 
 export function packRpcMessages(...msgs: Partial<RPCMessage>[]) {
 	return RPCMessages.create({
-		messages: msgs.map(msg => (
-			RPCMessage.create({
-				...msg,
-				id: msg.id || generateRpcMessageId()
-			})
-		))
+		messages: msgs.map((msg) => RPCMessage.create({
+			...msg,
+			id: msg.id || generateRpcMessageId(),
+		})
+		),
 	})
 }
 
@@ -414,8 +412,7 @@ export function ethersStructToPlainObject<T>(struct: T): T {
 		return struct
 	}
 
-	const namedKeys = Object.keys(struct)
-		.filter(key => isNaN(Number(key)))
+	const namedKeys = Object.keys(struct).filter((key) => isNaN(Number(key)))
 	// seems to be an actual array
 	if(!namedKeys.length) {
 		return struct.map(ethersStructToPlainObject) as any

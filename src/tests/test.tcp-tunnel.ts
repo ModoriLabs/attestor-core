@@ -7,7 +7,6 @@ const DEMO_GEO_LOCATIONS = ['in', 'us']
 jest.setTimeout(15_000)
 
 describe.skip('TCP Tunnel', () => {
-
 	it.each([...DEMO_GEO_LOCATIONS, 'none'])('should generate a session using a geoLocation (%s)', async(geoLocation) => {
 		const resParser = makeHttpResponseParser()
 

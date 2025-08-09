@@ -17,7 +17,7 @@ export const toprf: RPCHandler<'toprf'> = async(
 	const PUBLIC_KEY = ethers.utils.arrayify(PUBLIC_KEY_STR)
 
 	const engineStr = getEngineString(engine)
-	const operator = makeDefaultOPRFOperator('chacha20', engineStr, logger)
+	const operator = makeDefaultOPRFOperator('chacha20', engineStr as any, logger)
 	const res = await operator.evaluateOPRF(PRIVATE_KEY, maskedData)
 
 	return { ...res, publicKeyShare: PUBLIC_KEY }

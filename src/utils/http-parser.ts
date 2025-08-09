@@ -69,7 +69,8 @@ export function makeHttpResponseParser() {
          */
 		onChunk(data: Uint8Array) {
 			// concatenate the remaining data from the last chunk
-			remaining = concatenateUint8Arrays([remaining, data])
+			const concatenated = concatenateUint8Arrays([remaining, data])
+			remaining = new Uint8Array(concatenated)
 			// if we don't have the headers yet, keep reading lines
 			// as each header is in a line
 			if(!res.headersComplete) {

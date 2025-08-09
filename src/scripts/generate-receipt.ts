@@ -19,16 +19,18 @@ import {
 } from '..'
 
 type ProviderReceiptGenerationParams<P extends ProviderName> = {
-    name: P
-    params: ProviderParams<P>
-    secretParams: ProviderSecretParams<P>
-}
+  name: P
+  params: ProviderParams<P>
+  secretParams: ProviderSecretParams<P>
+};
 
 // tmp change till we move OPRF attestor to prod
-const DEFAULT_ATTESTOR_HOST_PORT = 'wss://attestor.reclaimprotocol.org:447/ws'
-const PRIVATE_KEY_HEX = getEnvVariable('PRIVATE_KEY_HEX')
-	// demo private key
-	|| '0x0123788edad59d7c013cdc85e4372f350f828e2cec62d9a2de4560e69aec7f89'
+const DEFAULT_ATTESTOR_HOST_PORT =
+  'wss://attestor-core-production.up.railway.app/ws'
+const PRIVATE_KEY_HEX =
+  getEnvVariable('PRIVATE_KEY_HEX') ||
+  // demo private key
+  '0x0123788edad59d7c013cdc85e4372f350f828e2cec62d9a2de4560e69aec7f89'
 
 export async function main<T extends ProviderName>(
 	receiptParams?: ProviderReceiptGenerationParams<T>
@@ -40,8 +42,9 @@ export async function main<T extends ProviderName>(
 
 	assertValidateProviderParams<'http'>(paramsJson.name, paramsJson.params)
 
-	let attestorHostPort = getCliArgument('attestor')
-        || DEFAULT_ATTESTOR_HOST_PORT
+	let attestorHostPort =
+    getCliArgument('attestor') || DEFAULT_ATTESTOR_HOST_PORT
+
 	let server: WebSocketServer | undefined
 	if(attestorHostPort === 'local') {
 		console.log('starting local attestor server...')
@@ -50,6 +53,7 @@ export async function main<T extends ProviderName>(
 	}
 
 	const zkEngine = getCliArgument('zk') === 'gnark' ? 'gnark' : 'snarkjs'
+
 	const receipt = await createClaimOnAttestor({
 		name: paramsJson.name,
 		secretParams: paramsJson.secretParams,
@@ -57,27 +61,28 @@ export async function main<T extends ProviderName>(
 		ownerPrivateKey: PRIVATE_KEY_HEX,
 		client: { url: attestorHostPort },
 		logger,
-		zkEngine
+		zkEngine,
 	})
 
 	if(receipt.error) {
 		console.error('claim creation failed:', receipt.error)
-	} else {
-		const ctx = receipt.claim?.context
-			? JSON.parse(receipt.claim.context)
-			: {}
-		console.log(`receipt is valid for ${paramsJson.name} provider`)
-		if(ctx.extractedParameters) {
-			console.log('extracted params:', ctx.extractedParameters)
-		}
+		throw new Error(`Claim creation failed: ${receipt.error}`)
+	}
+
+	const ctx = receipt.claim?.context ? JSON.parse(receipt.claim.context) : {}
+
+	let extractedParameters
+	if(ctx.extractedParameters) {
+		console.log('extracted params:', ctx.extractedParameters)
+		extractedParameters = ctx.extractedParameters
 	}
 
 	const decTranscript = await decryptTranscript(
-		receipt.request?.transcript!,
-		logger,
-		zkEngine,
-		receipt.request?.fixedServerIV!,
-		receipt.request?.fixedClientIV!
+    receipt.request?.transcript!,
+    logger,
+    zkEngine,
+    receipt.request?.fixedServerIV!,
+    receipt.request?.fixedClientIV!
 	)
 	const transcriptStr = getTranscriptString(decTranscript)
 	console.log('receipt:\n', transcriptStr)
@@ -86,23 +91,34 @@ export async function main<T extends ProviderName>(
 	await client.terminateConnection()
 	server?.close()
 
+	return {
+		receipt,
+		extractedParameters,
+		transcript: transcriptStr,
+		provider: paramsJson.name,
+	}
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getInputParameters(): Promise<ProviderReceiptGenerationParams<any>> {
+async function getInputParameters(): Promise<
+  ProviderReceiptGenerationParams<any>
+  > {
 	const paramsJsonFile = getCliArgument('json')
 	if(!paramsJsonFile) {
 		const name = getCliArgument('name')
 		const paramsStr = getCliArgument('params')
 		const secretParamsStr = getCliArgument('secretParams')
+
 		if(!name || !paramsStr || !secretParamsStr) {
-			throw new Error('Either provide --json argument for parameters JSON or provide separately with --name, --params & --secretParams')
+			throw new Error(
+				'Either provide --json argument for parameters JSON or provide separately with --name, --params & --secretParams'
+			)
 		}
 
 		return {
 			name,
 			params: JSON.parse(paramsStr),
-			secretParams: JSON.parse(secretParamsStr)
+			secretParams: JSON.parse(secretParamsStr),
 		}
 	}
 
@@ -110,7 +126,7 @@ async function getInputParameters(): Promise<ProviderReceiptGenerationParams<any
 	for(const variable in process.env) {
 		fileContents = fileContents.replace(
 			`{{${variable}}}`,
-            process.env[variable]!
+      process.env[variable]!
 		)
 	}
 
@@ -118,9 +134,7 @@ async function getInputParameters(): Promise<ProviderReceiptGenerationParams<any
 }
 
 if(require.main === module) {
-	main()
-		.catch(err => {
-			console.error('error in receipt gen', err)
-		})
+	main().catch((err) => {
+		console.error('error in receipt gen', err)
+	})
 }
-
