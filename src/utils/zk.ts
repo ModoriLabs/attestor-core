@@ -6,6 +6,7 @@ import {
 	strToUint8Array,
 } from '@reclaimprotocol/tls'
 import {
+	BarretenbergOperator,
 	CONFIG as ZK_CONFIG,
 	EncryptionAlgorithm,
 	generateProof,
@@ -525,7 +526,7 @@ function getChunkSizeBytes(alg: EncryptionAlgorithm) {
 }
 
 const zkEngines: {
-  [z in ZKEngine]?: { [E in EncryptionAlgorithm]?: ZKOperator };
+  [z in ZKEngine]?: { [E in EncryptionAlgorithm]?: ZKOperator | BarretenbergOperator };
 } = {}
 
 const oprfEngines: {
@@ -533,7 +534,7 @@ const oprfEngines: {
 } = {}
 
 const operatorMakers: {
-  [z in ZKEngine]?: (opts: MakeZKOperatorOpts<{}>) => ZKOperator;
+  [z in ZKEngine]?: (opts: MakeZKOperatorOpts<{}>) => ZKOperator | BarretenbergOperator;
 } = {
 	snarkjs: makeSnarkJsZKOperator,
 	gnark: makeGnarkZkOperator,
