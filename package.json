@@ -79,7 +79,7 @@
     "@ethersproject/providers": "^5.7.2",
     "@reclaimprotocol/tls": "^0.0.2",
     "@reclaimprotocol/zk-symmetric-crypto": "^3.0.2",
-    "zk-symmetric-crypto-test": "1.1.0",
+    "zk-symmetric-crypto-test": "1.2.0",
     "@types/express": "^5.0.3",
     "ajv": "^8.17.1",
     "canonicalize": "^2.0.0",
