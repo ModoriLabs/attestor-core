@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Build outputs
+lib/
+dist/
+build/
+
+# Generated files
+*.d.ts
+*.js
+*.js.map
+
+# Config files
+*.json
+*.yaml
+*.yml
+*.toml
+
+# Documentation
+*.md
+*.txt
+
+# Other files
+*.sh
+*.proto
+*.sol
+*.wasm
+*.zkey
+*.r1cs
+*.ptau
+*.witness
+*.json
+*.html
+*.css
+*.scss
+*.less
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
