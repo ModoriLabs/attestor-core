@@ -1,0 +1,9 @@
+[build]
+builder = "nixpacks"
+buildCommand = "echo $(node -v) && pnpm install && pnpm run build"
+
+[deploy]
+startCommand = "pnpm start"
+
+[variables]
+NODE_VERSION = "23" 
