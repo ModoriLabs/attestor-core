@@ -664,7 +664,7 @@ export const ClaimContext: MessageFns<ClaimContext> = {
   decode(input: BinaryReader | Uint8Array, length?: number): ClaimContext {
     const reader =
       input instanceof BinaryReader ? input : new BinaryReader(input)
-    let end = length === undefined ? reader.len : reader.pos + length
+    const end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseClaimContext()
     while (reader.pos < end) {
       const tag = reader.uint32()
@@ -776,7 +776,7 @@ export const ClaimContext_ExtractedParametersEntry: MessageFns<ClaimContext_Extr
     ): ClaimContext_ExtractedParametersEntry {
       const reader =
         input instanceof BinaryReader ? input : new BinaryReader(input)
-      let end = length === undefined ? reader.len : reader.pos + length
+      const end = length === undefined ? reader.len : reader.pos + length
       const message = createBaseClaimContext_ExtractedParametersEntry()
       while (reader.pos < end) {
         const tag = reader.uint32()
@@ -883,7 +883,7 @@ export const ProviderClaimData: MessageFns<ProviderClaimData> = {
   decode(input: BinaryReader | Uint8Array, length?: number): ProviderClaimData {
     const reader =
       input instanceof BinaryReader ? input : new BinaryReader(input)
-    let end = length === undefined ? reader.len : reader.pos + length
+    const end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseProviderClaimData()
     while (reader.pos < end) {
       const tag = reader.uint32()
@@ -1039,7 +1039,7 @@ export const ProviderClaimInfo: MessageFns<ProviderClaimInfo> = {
   decode(input: BinaryReader | Uint8Array, length?: number): ProviderClaimInfo {
     const reader =
       input instanceof BinaryReader ? input : new BinaryReader(input)
-    let end = length === undefined ? reader.len : reader.pos + length
+    const end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseProviderClaimInfo()
     while (reader.pos < end) {
       const tag = reader.uint32()
@@ -1139,7 +1139,7 @@ export const ErrorData: MessageFns<ErrorData> = {
   decode(input: BinaryReader | Uint8Array, length?: number): ErrorData {
     const reader =
       input instanceof BinaryReader ? input : new BinaryReader(input)
-    let end = length === undefined ? reader.len : reader.pos + length
+    const end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseErrorData()
     while (reader.pos < end) {
       const tag = reader.uint32()
@@ -1241,7 +1241,7 @@ export const CreateTunnelRequest: MessageFns<CreateTunnelRequest> = {
   ): CreateTunnelRequest {
     const reader =
       input instanceof BinaryReader ? input : new BinaryReader(input)
-    let end = length === undefined ? reader.len : reader.pos + length
+    const end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseCreateTunnelRequest()
     while (reader.pos < end) {
       const tag = reader.uint32()
@@ -1349,7 +1349,7 @@ export const DisconnectTunnelRequest: MessageFns<DisconnectTunnelRequest> = {
   ): DisconnectTunnelRequest {
     const reader =
       input instanceof BinaryReader ? input : new BinaryReader(input)
-    let end = length === undefined ? reader.len : reader.pos + length
+    const end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseDisconnectTunnelRequest()
     while (reader.pos < end) {
       const tag = reader.uint32()
@@ -1407,7 +1407,7 @@ export const Empty: MessageFns<Empty> = {
   decode(input: BinaryReader | Uint8Array, length?: number): Empty {
     const reader =
       input instanceof BinaryReader ? input : new BinaryReader(input)
-    let end = length === undefined ? reader.len : reader.pos + length
+    const end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseEmpty()
     while (reader.pos < end) {
       const tag = reader.uint32()
@@ -1460,7 +1460,7 @@ export const TunnelMessage: MessageFns<TunnelMessage> = {
   decode(input: BinaryReader | Uint8Array, length?: number): TunnelMessage {
     const reader =
       input instanceof BinaryReader ? input : new BinaryReader(input)
-    let end = length === undefined ? reader.len : reader.pos + length
+    const end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseTunnelMessage()
     while (reader.pos < end) {
       const tag = reader.uint32()
@@ -1545,7 +1545,7 @@ export const TunnelDisconnectEvent: MessageFns<TunnelDisconnectEvent> = {
   ): TunnelDisconnectEvent {
     const reader =
       input instanceof BinaryReader ? input : new BinaryReader(input)
-    let end = length === undefined ? reader.len : reader.pos + length
+    const end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseTunnelDisconnectEvent()
     while (reader.pos < end) {
       const tag = reader.uint32()
@@ -1636,7 +1636,7 @@ export const MessageReveal: MessageFns<MessageReveal> = {
   decode(input: BinaryReader | Uint8Array, length?: number): MessageReveal {
     const reader =
       input instanceof BinaryReader ? input : new BinaryReader(input)
-    let end = length === undefined ? reader.len : reader.pos + length
+    const end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseMessageReveal()
     while (reader.pos < end) {
       const tag = reader.uint32()
@@ -1741,7 +1741,7 @@ export const MessageReveal_MessageRevealDirect: MessageFns<MessageReveal_Message
     ): MessageReveal_MessageRevealDirect {
       const reader =
         input instanceof BinaryReader ? input : new BinaryReader(input)
-      let end = length === undefined ? reader.len : reader.pos + length
+      const end = length === undefined ? reader.len : reader.pos + length
       const message = createBaseMessageReveal_MessageRevealDirect()
       while (reader.pos < end) {
         const tag = reader.uint32()
@@ -1843,7 +1843,7 @@ export const MessageReveal_MessageRevealZk: MessageFns<MessageReveal_MessageReve
     ): MessageReveal_MessageRevealZk {
       const reader =
         input instanceof BinaryReader ? input : new BinaryReader(input)
-      let end = length === undefined ? reader.len : reader.pos + length
+      const end = length === undefined ? reader.len : reader.pos + length
       const message = createBaseMessageReveal_MessageRevealZk()
       while (reader.pos < end) {
         const tag = reader.uint32()
@@ -1941,7 +1941,7 @@ export const MessageReveal_ZKProof: MessageFns<MessageReveal_ZKProof> = {
   ): MessageReveal_ZKProof {
     const reader =
       input instanceof BinaryReader ? input : new BinaryReader(input)
-    let end = length === undefined ? reader.len : reader.pos + length
+    const end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseMessageReveal_ZKProof()
     while (reader.pos < end) {
       const tag = reader.uint32()
@@ -2098,7 +2098,7 @@ export const TOPRFPayload: MessageFns<TOPRFPayload> = {
   decode(input: BinaryReader | Uint8Array, length?: number): TOPRFPayload {
     const reader =
       input instanceof BinaryReader ? input : new BinaryReader(input)
-    let end = length === undefined ? reader.len : reader.pos + length
+    const end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseTOPRFPayload()
     while (reader.pos < end) {
       const tag = reader.uint32()
@@ -2201,7 +2201,7 @@ export const DataSlice: MessageFns<DataSlice> = {
   decode(input: BinaryReader | Uint8Array, length?: number): DataSlice {
     const reader =
       input instanceof BinaryReader ? input : new BinaryReader(input)
-    let end = length === undefined ? reader.len : reader.pos + length
+    const end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseDataSlice()
     while (reader.pos < end) {
       const tag = reader.uint32()
@@ -2292,7 +2292,7 @@ export const ClaimRequestData: MessageFns<ClaimRequestData> = {
   decode(input: BinaryReader | Uint8Array, length?: number): ClaimRequestData {
     const reader =
       input instanceof BinaryReader ? input : new BinaryReader(input)
-    let end = length === undefined ? reader.len : reader.pos + length
+    const end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseClaimRequestData()
     while (reader.pos < end) {
       const tag = reader.uint32()
@@ -2452,7 +2452,7 @@ export const ClaimTunnelRequest: MessageFns<ClaimTunnelRequest> = {
   ): ClaimTunnelRequest {
     const reader =
       input instanceof BinaryReader ? input : new BinaryReader(input)
-    let end = length === undefined ? reader.len : reader.pos + length
+    const end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseClaimTunnelRequest()
     while (reader.pos < end) {
       const tag = reader.uint32()
@@ -2633,7 +2633,7 @@ export const ClaimTunnelRequest_Signatures: MessageFns<ClaimTunnelRequest_Signat
     ): ClaimTunnelRequest_Signatures {
       const reader =
         input instanceof BinaryReader ? input : new BinaryReader(input)
-      let end = length === undefined ? reader.len : reader.pos + length
+      const end = length === undefined ? reader.len : reader.pos + length
       const message = createBaseClaimTunnelRequest_Signatures()
       while (reader.pos < end) {
         const tag = reader.uint32()
@@ -2713,7 +2713,7 @@ export const ClaimTunnelRequest_TranscriptMessage: MessageFns<ClaimTunnelRequest
     ): ClaimTunnelRequest_TranscriptMessage {
       const reader =
         input instanceof BinaryReader ? input : new BinaryReader(input)
-      let end = length === undefined ? reader.len : reader.pos + length
+      const end = length === undefined ? reader.len : reader.pos + length
       const message = createBaseClaimTunnelRequest_TranscriptMessage()
       while (reader.pos < end) {
         const tag = reader.uint32()
@@ -2839,7 +2839,7 @@ export const ClaimTunnelResponse: MessageFns<ClaimTunnelResponse> = {
   ): ClaimTunnelResponse {
     const reader =
       input instanceof BinaryReader ? input : new BinaryReader(input)
-    let end = length === undefined ? reader.len : reader.pos + length
+    const end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseClaimTunnelResponse()
     while (reader.pos < end) {
       const tag = reader.uint32()
@@ -2977,7 +2977,7 @@ export const ClaimTunnelResponse_Signatures: MessageFns<ClaimTunnelResponse_Sign
     ): ClaimTunnelResponse_Signatures {
       const reader =
         input instanceof BinaryReader ? input : new BinaryReader(input)
-      let end = length === undefined ? reader.len : reader.pos + length
+      const end = length === undefined ? reader.len : reader.pos + length
       const message = createBaseClaimTunnelResponse_Signatures()
       while (reader.pos < end) {
         const tag = reader.uint32()
@@ -3090,7 +3090,7 @@ export const RequestClaimOnAvsRequest: MessageFns<RequestClaimOnAvsRequest> = {
   ): RequestClaimOnAvsRequest {
     const reader =
       input instanceof BinaryReader ? input : new BinaryReader(input)
-    let end = length === undefined ? reader.len : reader.pos + length
+    const end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseRequestClaimOnAvsRequest()
     while (reader.pos < end) {
       const tag = reader.uint32()
@@ -3198,7 +3198,7 @@ export const RequestClaimOnAvsResponse: MessageFns<RequestClaimOnAvsResponse> =
     ): RequestClaimOnAvsResponse {
       const reader =
         input instanceof BinaryReader ? input : new BinaryReader(input)
-      let end = length === undefined ? reader.len : reader.pos + length
+      const end = length === undefined ? reader.len : reader.pos + length
       const message = createBaseRequestClaimOnAvsResponse()
       while (reader.pos < end) {
         const tag = reader.uint32()
@@ -3306,7 +3306,7 @@ export const CompleteClaimOnAvsRequest: MessageFns<CompleteClaimOnAvsRequest> =
     ): CompleteClaimOnAvsRequest {
       const reader =
         input instanceof BinaryReader ? input : new BinaryReader(input)
-      let end = length === undefined ? reader.len : reader.pos + length
+      const end = length === undefined ? reader.len : reader.pos + length
       const message = createBaseCompleteClaimOnAvsRequest()
       while (reader.pos < end) {
         const tag = reader.uint32()
@@ -3411,7 +3411,7 @@ export const CompleteClaimOnAvsResponse: MessageFns<CompleteClaimOnAvsResponse> 
     ): CompleteClaimOnAvsResponse {
       const reader =
         input instanceof BinaryReader ? input : new BinaryReader(input)
-      let end = length === undefined ? reader.len : reader.pos + length
+      const end = length === undefined ? reader.len : reader.pos + length
       const message = createBaseCompleteClaimOnAvsResponse()
       while (reader.pos < end) {
         const tag = reader.uint32()
@@ -3497,7 +3497,7 @@ export const InitRequest: MessageFns<InitRequest> = {
   decode(input: BinaryReader | Uint8Array, length?: number): InitRequest {
     const reader =
       input instanceof BinaryReader ? input : new BinaryReader(input)
-    let end = length === undefined ? reader.len : reader.pos + length
+    const end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseInitRequest()
     while (reader.pos < end) {
       const tag = reader.uint32()
@@ -3578,7 +3578,7 @@ export const InitResponse: MessageFns<InitResponse> = {
   decode(input: BinaryReader | Uint8Array, length?: number): InitResponse {
     const reader =
       input instanceof BinaryReader ? input : new BinaryReader(input)
-    let end = length === undefined ? reader.len : reader.pos + length
+    const end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseInitResponse()
     while (reader.pos < end) {
       const tag = reader.uint32()
@@ -3647,7 +3647,7 @@ export const TOPRFRequest: MessageFns<TOPRFRequest> = {
   decode(input: BinaryReader | Uint8Array, length?: number): TOPRFRequest {
     const reader =
       input instanceof BinaryReader ? input : new BinaryReader(input)
-    let end = length === undefined ? reader.len : reader.pos + length
+    const end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseTOPRFRequest()
     while (reader.pos < end) {
       const tag = reader.uint32()
@@ -3740,7 +3740,7 @@ export const TOPRFResponse: MessageFns<TOPRFResponse> = {
   decode(input: BinaryReader | Uint8Array, length?: number): TOPRFResponse {
     const reader =
       input instanceof BinaryReader ? input : new BinaryReader(input)
-    let end = length === undefined ? reader.len : reader.pos + length
+    const end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseTOPRFResponse()
     while (reader.pos < end) {
       const tag = reader.uint32()
@@ -3966,7 +3966,7 @@ export const RPCMessage: MessageFns<RPCMessage> = {
   decode(input: BinaryReader | Uint8Array, length?: number): RPCMessage {
     const reader =
       input instanceof BinaryReader ? input : new BinaryReader(input)
-    let end = length === undefined ? reader.len : reader.pos + length
+    const end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseRPCMessage()
     while (reader.pos < end) {
       const tag = reader.uint32()
@@ -4425,7 +4425,7 @@ export const RPCMessages: MessageFns<RPCMessages> = {
   decode(input: BinaryReader | Uint8Array, length?: number): RPCMessages {
     const reader =
       input instanceof BinaryReader ? input : new BinaryReader(input)
-    let end = length === undefined ? reader.len : reader.pos + length
+    const end = length === undefined ? reader.len : reader.pos + length
     const message = createBaseRPCMessages()
     while (reader.pos < end) {
       const tag = reader.uint32()
