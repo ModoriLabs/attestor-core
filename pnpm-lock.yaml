@@ -89,6 +89,9 @@ importers:
       ws:
         specifier: ^8.18.0
         version: 8.18.2
+      zk-symmetric-crypto-test:
+        specifier: 1.4.11
+        version: 1.4.11(koffi@2.12.0)(snarkjs@0.7.5)
     optionalDependencies:
       koffi:
         specifier: ^2.9.2
@@ -4722,6 +4725,17 @@ packages:
   yocto-queue@0.1.0:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
+
+  zk-symmetric-crypto-test@1.4.11:
+    resolution: {integrity: sha512-rbD62D9+Nrn3p3UW0dvXu3FrZqw5hTMb4dusddgoj8T25B1XTc5IwdQllDexHPZL4nHiZabT2jPtQcynrNT1uA==}
+    peerDependencies:
+      koffi: '*'
+      snarkjs: '*'
+    peerDependenciesMeta:
+      koffi:
+        optional: true
+      snarkjs:
+        optional: true
 
 snapshots:
 
@@ -10340,3 +10354,14 @@ snapshots:
   yn@3.1.1: {}
 
   yocto-queue@0.1.0: {}
+
+  zk-symmetric-crypto-test@1.4.11(koffi@2.12.0)(snarkjs@0.7.5):
+    dependencies:
+      '@aztec/bb.js': 1.2.1
+      '@noir-lang/noir_js': 1.0.0-beta.11
+      '@stablelib/chacha20poly1305': 1.0.1
+      js-base64: 3.7.8
+      p-queue: 6.6.2
+    optionalDependencies:
+      koffi: 2.12.0
+      snarkjs: 0.7.5
