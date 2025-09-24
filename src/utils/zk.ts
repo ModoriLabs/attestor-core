@@ -9,6 +9,7 @@ import {
   CONFIG as ZK_CONFIG,
   EncryptionAlgorithm,
   generateProof,
+  makeBarretenbergZKOperator,
   makeGnarkOPRFOperator,
   makeGnarkZkOperator,
   makeLocalFileFetch,
@@ -59,6 +60,7 @@ import {
   isRedactionCongruent,
   REDACTION_CHAR_CODE,
 } from "src/utils/redactions"
+import { cpus } from "os"
 
 type GenerateZKChunkProofOpts = {
   key: Uint8Array
@@ -523,7 +525,9 @@ function getChunkSizeBytes(alg: EncryptionAlgorithm) {
 }
 
 const zkEngines: {
-  [z in ZKEngine]?: { [E in EncryptionAlgorithm]?: ZKOperator }
+  [z in ZKEngine]?: {
+    [E in EncryptionAlgorithm]?: ZKOperator | BarretenbergOperator
+  }
 } = {}
 
 const oprfEngines: {
@@ -531,10 +535,13 @@ const oprfEngines: {
 } = {}
 
 const operatorMakers: {
-  [z in ZKEngine]?: (opts: MakeZKOperatorOpts<{}>) => ZKOperator
+  [z in ZKEngine]?: (
+    opts: MakeZKOperatorOpts<{}>
+  ) => ZKOperator | BarretenbergOperator
 } = {
   snarkjs: makeSnarkJsZKOperator,
   gnark: makeGnarkZkOperator,
+  barretenberg: makeBarretenbergZKOperator,
 }
 
 const OPRF_OPERATOR_MAKERS: { [z in ZKEngine]?: MakeOPRFOperator<{}> } = {
@@ -567,8 +574,15 @@ export function makeDefaultZkOperator(
     if (!maker) {
       throw new Error(`No ZK operator maker for ${zkEngine}`)
     }
-
-    zkOperators[algorithm] = maker({ algorithm, fetcher })
+    if (zkEngine === "barretenberg") {
+      zkOperators[algorithm] = maker({
+        algorithm,
+        fetcher,
+        options: { threads: cpus().length },
+      })
+    } else {
+      zkOperators[algorithm] = maker({ algorithm, fetcher })
+    }
   }
 
   return zkOperators[algorithm]

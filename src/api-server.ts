@@ -1,8 +1,8 @@
+import cors from "cors"
 import express from "express"
 import { readFile } from "fs/promises"
-import { main as generateReceiptMain } from "./scripts/generate-receipt"
-import { logger } from "./utils"
-import cors from "cors"
+import { main as generateReceiptMain } from "src/scripts/generate-receipt"
+import { logger } from "src/utils"
 
 const app = express()
 const PORT = process.env.API_PORT || 3000

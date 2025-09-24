@@ -23,7 +23,7 @@ const ZK_CIPHER_SUITES: CipherSuite[] = [
   "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
 ]
 
-const ZK_ENGINES: ZKEngine[] = ["gnark", "snarkjs"]
+const ZK_ENGINES: ZKEngine[] = ["gnark", "snarkjs", "barretenberg"]
 
 type RedactionTestVector = {
   input: string[]
@@ -31,7 +31,7 @@ type RedactionTestVector = {
   redactions: RedactedOrHashedArraySlice[]
 }
 
-jest.setTimeout(90_000) // 90s
+jest.setTimeout(300_000) // 5 minutes
 
 describe("Redaction Tests", () => {
   it("should correctly redact blocks", async () => {

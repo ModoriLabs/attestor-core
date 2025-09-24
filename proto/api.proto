@@ -52,6 +52,7 @@ enum ErrorCode {
 enum ZKProofEngine {
   ZK_ENGINE_SNARKJS = 0;
   ZK_ENGINE_GNARK = 1;
+  ZK_ENGINE_BARRETENBERG = 2;
 }
 
 message ClaimContext {

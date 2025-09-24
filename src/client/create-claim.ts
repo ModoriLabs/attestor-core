@@ -254,7 +254,9 @@ async function _createClaimOnAttestor<N extends ProviderName>({
     zkEngine:
       zkEngine === "gnark"
         ? ZKProofEngine.ZK_ENGINE_GNARK
-        : ZKProofEngine.ZK_ENGINE_SNARKJS,
+        : zkEngine === "barretenberg"
+          ? ZKProofEngine.ZK_ENGINE_BARRETENBERG
+          : ZKProofEngine.ZK_ENGINE_SNARKJS,
     fixedServerIV: serverIV!,
     fixedClientIV: clientIV!,
   })
