@@ -6,13 +6,6 @@ import {
   strToUint8Array,
 } from "@reclaimprotocol/tls"
 import {
-  CipherSuite,
-  concatenateUint8Arrays,
-  crypto,
-  generateIV,
-  strToUint8Array,
-} from "@reclaimprotocol/tls"
-import {
   CONFIG as ZK_CONFIG,
   EncryptionAlgorithm,
   generateProof,

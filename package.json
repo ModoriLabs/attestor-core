@@ -12,7 +12,8 @@
     "build:browser": "sh ./src/scripts/build-browser.sh",
     "run:tsc": "SWC_NODE_IGNORE_DYNAMIC=true node -r @swc-node/register",
     "start:tsc": "npm run run:tsc -- src/scripts/start-server",
-    "start": "node lib/scripts/start-server",
+    "start": "node lib/api-server.js",
+    "start:main": "node lib/scripts/start-server",
     "prepare": "sh ./src/scripts/prepare.sh",
     "test": "NODE_ENV=test TZ=utc jest --verbose --forceExit --detectOpenHandles",
     "test:avs": "NODE_ENV=test TZ=utc jest --verbose --forceExit --detectOpenHandles --test-match **/src/avs/tests/test.*.ts",
@@ -24,6 +25,10 @@
     "generate:provider-types": "npm run run:tsc -- src/scripts/generate-provider-types.ts",
     "verify:root-ca": "npm run run:tsc -- src/scripts/verify-root-ca.ts",
     "create:claim": "npm run run:tsc -- src/scripts/generate-receipt.ts --json 'example/twitter-followers.json' --attestor wss://attestor-core-production.up.railway.app/ws",
+    "create:twitter-claim:local": "npm run run:tsc -- src/scripts/generate-receipt.ts --json 'example/twitter-followers.json' --attestor ws://localhost:8001/ws",
+    "create:coin-gecko-claim:local": "npm run run:tsc -- src/scripts/generate-receipt.ts --json 'example/coin-gecko.json' --attestor ws://localhost:8001/ws",
+    "create:toss-claim:local": "npm run run:tsc -- src/scripts/generate-receipt.ts --json 'example/tossbank.json' --attestor ws://localhost:8001/ws",
+    "create:toss-claim:remote": "npm run run:tsc -- src/scripts/generate-receipt.ts --json 'example/tossbank.json' --attestor wss://attestor-core-production.up.railway.app/ws",
     "build-contracts": "cd avs/contracts && forge build",
     "deploy:contracts": "sh avs/utils/anvil/deploy-all-to-anvil-and-save-state.sh",
     "deploy:contracts-to-chain": "sh avs/utils/anvil/deploy-to-chain.sh",
@@ -35,7 +40,8 @@
     "start:chain": "bash ./avs/utils/anvil/start-anvil-chain-with-el-and-avs-deployed.sh",
     "commitlint": "commitlint --edit",
     "download:zk-files": "node node_modules/@reclaimprotocol/zk-symmetric-crypto/lib/scripts/download-files",
-    "generate:toprf-keys": "npm run run:tsc -- src/scripts/generate-toprf-keys.ts"
+    "generate:toprf-keys": "npm run run:tsc -- src/scripts/generate-toprf-keys.ts",
+    "start:api": "npm run run:tsc -- src/api-server.ts"
   },
   "files": [
     "lib/*"
