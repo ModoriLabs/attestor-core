@@ -3,7 +3,7 @@ import {
   OPRFOperator,
   ZKEngine,
   ZKOperator,
-} from "@reclaimprotocol/zk-symmetric-crypto"
+} from "zk-symmetric-crypto-test"
 import { TOPRFPayload } from "src/proto/api"
 
 export type ZKOperators = { [E in EncryptionAlgorithm]?: ZKOperator }

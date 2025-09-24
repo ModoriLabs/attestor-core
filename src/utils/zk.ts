@@ -22,7 +22,8 @@ import {
   verifyProof,
   ZKEngine,
   ZKOperator,
-} from "@reclaimprotocol/zk-symmetric-crypto"
+  BarretenbergOperator,
+} from "zk-symmetric-crypto-test"
 import {
   DEFAULT_REMOTE_FILE_FETCH_BASE_URL,
   DEFAULT_ZK_CONCURRENCY,
@@ -464,6 +465,8 @@ export async function verifyZkPacket({
       nonce = generateIV(nonce, recordNumber)
     }
 
+    // Use the standard verifyProof for all engines
+    // The verifyProof function from zk-symmetric-crypto should handle barretenberg correctly
     await verifyProof({
       proof: {
         algorithm,

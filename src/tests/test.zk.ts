@@ -5,7 +5,7 @@ import {
   strToUint8Array,
   SUPPORTED_CIPHER_SUITE_MAP,
 } from "@reclaimprotocol/tls"
-import { ZKEngine } from "@reclaimprotocol/zk-symmetric-crypto"
+import { ZKEngine } from "zk-symmetric-crypto-test"
 import { MessageReveal_ZKProof as ZKProof } from "src/proto/api"
 import { CompleteTLSPacket, RedactedOrHashedArraySlice } from "src/types"
 import {

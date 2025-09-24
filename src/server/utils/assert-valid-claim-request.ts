@@ -2,7 +2,7 @@ import {
   areUint8ArraysEqual,
   concatenateUint8Arrays,
 } from "@reclaimprotocol/tls"
-import { ZKEngine } from "@reclaimprotocol/zk-symmetric-crypto"
+import { ZKEngine } from "zk-symmetric-crypto-test"
 import {
   ClaimTunnelRequest,
   InitRequest,
@@ -87,10 +87,23 @@ export async function assertValidClaimRequest(
     )
   }
 
+  // Map zkEngine to the correct string value
+  let zkEngineStr: ZKEngine
+  if (zkEngine === ZKProofEngine.ZK_ENGINE_GNARK) {
+    zkEngineStr = "gnark"
+  } else if (zkEngine === ZKProofEngine.ZK_ENGINE_SNARKJS) {
+    zkEngineStr = "snarkjs"
+  } else if (zkEngine === ZKProofEngine.ZK_ENGINE_BARRETENBERG) {
+    zkEngineStr = "barretenberg"
+  } else {
+    // Default to snarkjs for backward compatibility
+    zkEngineStr = "snarkjs"
+  }
+
   const receipt = await decryptTranscript(
     request.transcript,
     logger,
-    zkEngine === ZKProofEngine.ZK_ENGINE_GNARK ? "gnark" : "snarkjs",
+    zkEngineStr,
     fixedServerIV,
     fixedClientIV
   )

@@ -10,7 +10,7 @@ import {
   TLSProtocolVersion,
   uint8ArrayToDataView,
 } from "@reclaimprotocol/tls"
-import { REDACTION_CHAR_CODE } from "@reclaimprotocol/zk-symmetric-crypto"
+import { REDACTION_CHAR_CODE } from "zk-symmetric-crypto-test"
 import { RPCMessage, RPCMessages } from "src/proto/api"
 import {
   CompleteTLSPacket,
