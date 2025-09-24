@@ -1,21 +1,21 @@
-export type TransportType = 'node' | 'react-native' | 'browser'
+export type TransportType = "node" | "react-native" | "browser"
 
 export function detectEnvironment(): TransportType {
-	if(typeof navigator !== 'undefined' && navigator.product === 'ReactNative') {
-		return 'react-native'
-	}
+  if (typeof navigator !== "undefined" && navigator.product === "ReactNative") {
+    return "react-native"
+  }
 
-	if(typeof window !== 'undefined') {
-		return 'browser'
-	}
+  if (typeof window !== "undefined") {
+    return "browser"
+  }
 
-	return 'node'
+  return "node"
 }
 
 export function getEnvVariable(name: string) {
-	if(typeof process === 'undefined') {
-		return undefined
-	}
+  if (typeof process === "undefined") {
+    return undefined
+  }
 
-	return process?.env[name]
+  return process?.env[name]
 }

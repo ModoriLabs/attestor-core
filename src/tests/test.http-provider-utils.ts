@@ -1,48 +1,60 @@
-import { strToUint8Array } from '@reclaimprotocol/tls'
-import assert from 'assert'
-import { providers } from 'src/providers'
-import httpProvider from 'src/providers/http'
+import { strToUint8Array } from "@reclaimprotocol/tls"
+import assert from "assert"
+import { providers } from "src/providers"
+import httpProvider from "src/providers/http"
 import {
-	extractHTMLElement, extractHTMLElements,
-	extractJSONValueIndex, extractJSONValueIndexes,
-	makeRegex,
-	matchRedactedStrings,
-} from 'src/providers/http/utils'
-import { RES_CHUNKED_PARTIAL_BODY } from 'src/tests/test.http-parser'
-import { ProviderParams, Transcript } from 'src/types'
-import { assertValidateProviderParams, getBlocksToReveal, getProviderValue, hashProviderParams, logger, uint8ArrayToStr } from 'src/utils'
-import { deserialize, serialize } from 'v8'
+  extractHTMLElement,
+  extractHTMLElements,
+  extractJSONValueIndex,
+  extractJSONValueIndexes,
+  makeRegex,
+  matchRedactedStrings,
+} from "src/providers/http/utils"
+import { RES_CHUNKED_PARTIAL_BODY } from "src/tests/test.http-parser"
+import { ProviderParams, Transcript } from "src/types"
+import {
+  assertValidateProviderParams,
+  getBlocksToReveal,
+  getProviderValue,
+  hashProviderParams,
+  logger,
+  uint8ArrayToStr,
+} from "src/utils"
+import { deserialize, serialize } from "v8"
 
 jest.setTimeout(60_000)
 
-describe('HTTP Provider Utils tests', () => {
+describe("HTTP Provider Utils tests", () => {
+  const {
+    hostPort,
+    geoLocation,
+    getResponseRedactions,
+    createRequest,
+    assertValidProviderReceipt,
+  } = providers["http"]
 
-	const {
-		hostPort,
-		geoLocation,
-		getResponseRedactions,
-		createRequest,
-		assertValidProviderReceipt
-	} = providers['http']
+  const transcript: Transcript<Uint8Array> = JSON.parse(
+    '[{"message":"KioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKio=","sender":"server"},{"message":"KioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKg==","sender":"server"},{"message":"KioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioq","sender":"server"},{"message":"KioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKg==","sender":"server"},{"message":"KioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKio=","sender":"server"},{"message":"KioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKio=","sender":"server"},{"message":"R0VUIC8gSFRUUC8xLjENCkhvc3Q6IHhhcmdzLm9yZw0KQ29udGVudC1MZW5ndGg6IDQNCkNvbm5lY3Rpb246IGNsb3NlDQpBY2NlcHQtRW5jb2Rpbmc6IGlkZW50aXR5DQp1c2VyLWFnZW50OiBNb3ppbGxhLzUuMA0K","sender":"client"},{"message":"KioqKio=","sender":"client"},{"message":"KioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKg==","sender":"client"},{"message":"KioqKio=","sender":"client"},{"message":"DQoNCnQ=","sender":"client"},{"message":"KioqKio=","sender":"client"},{"message":"Kg==","sender":"client"},{"message":"KioqKio=","sender":"client"},{"message":"c3Q=","sender":"client"},{"message":"SFRUUC8xLjEgMjAwIE9LKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKg==","sender":"server"},{"message":"KioqKioqKioqKioqKioqKioqKioqKioqKioqKjx0aXRsZT5BaWtlbiAmYW1wOyBEcmlzY29sbCAmYW1wOyBXZWJiPC90aXRsZT4qKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqT25lIG9mIHRoZSBmZXcgZXhjZXB0aW9ucyBpcyBhIHNlcmllcyBvZiBkb2N1bWVudHMgdGhhdCBJJ3ZlIHdyaXR0ZW4KICAgIGJyZWFraW5nIGRvd24gY3J5cHRvZ3JhcGhpYyBhbmQgbmV0d29yayBwcm90b2NvbHMgYnl0ZS1ieS1ieXRlLiBJJ20KICAgIGFsd2F5cyBoZWFyaW5nIGZyb20gdGVhY2hlcnMsIHN0dWRlbnRzLCBhbmQgZmVsbG93IHNvZnR3YXJlIGRldmVsb3BlcnMKICAgIHdobyB1c2UgdGhlc2UgdG8gbGVhcm4sIHRvIGZpeCwgYW5kIHRvIHVuZGVyc3RhbmQuIEknbSB2ZXJ5IHByb3VkIG9mIHRoYXQuKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioq","sender":"server"},{"message":"Kio=","sender":"server"}]'
+  ).map(x => ({
+    ...x,
+    message: Buffer.from(x.message, "base64"),
+  }))
 
-	const transcript: Transcript<Uint8Array> = JSON.parse('[{"message":"KioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKio=","sender":"server"},{"message":"KioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKg==","sender":"server"},{"message":"KioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioq","sender":"server"},{"message":"KioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKg==","sender":"server"},{"message":"KioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKio=","sender":"server"},{"message":"KioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKio=","sender":"server"},{"message":"R0VUIC8gSFRUUC8xLjENCkhvc3Q6IHhhcmdzLm9yZw0KQ29udGVudC1MZW5ndGg6IDQNCkNvbm5lY3Rpb246IGNsb3NlDQpBY2NlcHQtRW5jb2Rpbmc6IGlkZW50aXR5DQp1c2VyLWFnZW50OiBNb3ppbGxhLzUuMA0K","sender":"client"},{"message":"KioqKio=","sender":"client"},{"message":"KioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKg==","sender":"client"},{"message":"KioqKio=","sender":"client"},{"message":"DQoNCnQ=","sender":"client"},{"message":"KioqKio=","sender":"client"},{"message":"Kg==","sender":"client"},{"message":"KioqKio=","sender":"client"},{"message":"c3Q=","sender":"client"},{"message":"SFRUUC8xLjEgMjAwIE9LKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKg==","sender":"server"},{"message":"KioqKioqKioqKioqKioqKioqKioqKioqKioqKjx0aXRsZT5BaWtlbiAmYW1wOyBEcmlzY29sbCAmYW1wOyBXZWJiPC90aXRsZT4qKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqT25lIG9mIHRoZSBmZXcgZXhjZXB0aW9ucyBpcyBhIHNlcmllcyBvZiBkb2N1bWVudHMgdGhhdCBJJ3ZlIHdyaXR0ZW4KICAgIGJyZWFraW5nIGRvd24gY3J5cHRvZ3JhcGhpYyBhbmQgbmV0d29yayBwcm90b2NvbHMgYnl0ZS1ieS1ieXRlLiBJJ20KICAgIGFsd2F5cyBoZWFyaW5nIGZyb20gdGVhY2hlcnMsIHN0dWRlbnRzLCBhbmQgZmVsbG93IHNvZnR3YXJlIGRldmVsb3BlcnMKICAgIHdobyB1c2UgdGhlc2UgdG8gbGVhcm4sIHRvIGZpeCwgYW5kIHRvIHVuZGVyc3RhbmQuIEknbSB2ZXJ5IHByb3VkIG9mIHRoYXQuKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioq","sender":"server"},{"message":"Kio=","sender":"server"}]')
-		.map((x) => ({
-			...x,
-			message: Buffer.from(x.message, 'base64'),
-		}))
+  it("should parse xpath & JSON path", () => {
+    const json = extractHTMLElement(
+      html,
+      "//script[@data-component-name='Navbar']",
+      true
+    )
+    const val = extractJSONValueIndex(json, "$.hasBookface")
+    const rm = '"hasBookface":true'
+    const regexp = new RegExp(rm, "gim")
 
-	it('should parse xpath & JSON path', () => {
-		const json = extractHTMLElement(html, "//script[@data-component-name='Navbar']", true)
-		const val = extractJSONValueIndex(json, '$.hasBookface')
-		const rm = '"hasBookface":true'
-		const regexp = new RegExp(rm, 'gim')
+    expect(regexp.test(json.slice(val.start, val.end))).toBe(true)
+  })
 
-		expect(regexp.test(json.slice(val.start, val.end))).toBe(true)
-	})
-
-
-	it('should extract complex JSON path', () => {
-		const json = `{
+  it("should extract complex JSON path", () => {
+    const json = `{
     "items":[
         {
             "name": "John Doe",
@@ -54,42 +66,56 @@ describe('HTTP Provider Utils tests', () => {
         }
     ]
 }`
-		const val = extractJSONValueIndex(json, '$.items[?(@.name.match(/.*oe/))].name')
-		const rm = '"name": "John Doe"'
-		const regexp = new RegExp(rm, 'gim')
+    const val = extractJSONValueIndex(
+      json,
+      "$.items[?(@.name.match(/.*oe/))].name"
+    )
+    const rm = '"name": "John Doe"'
+    const regexp = new RegExp(rm, "gim")
 
-		expect(regexp.test(json.slice(val.start, val.end))).toBe(true)
-	})
+    expect(regexp.test(json.slice(val.start, val.end))).toBe(true)
+  })
 
-
-	it('should get inner & outer tag contents', () => {
-		const html = `<body>
+  it("should get inner & outer tag contents", () => {
+    const html = `<body>
 			  <div id="content123">This is <span>some</span> text!</div>
 			  <div id="content456">This is <span>some</span> other text!</div>
 			  <div id="content789">This is <span>some</span> irrelevant text!</div>
 			</body>`
 
-		let content = extractHTMLElement(html, "//div[contains(@id, 'content123')]", true)
-		expect(content).toEqual('This is <span>some</span> text!')
-		content = extractHTMLElement(html, "//div[contains(@id, 'content456')]", false)
-		expect(content).toEqual('<div id="content456">This is <span>some</span> other text!</div>')
-	})
+    let content = extractHTMLElement(
+      html,
+      "//div[contains(@id, 'content123')]",
+      true
+    )
+    expect(content).toEqual("This is <span>some</span> text!")
+    content = extractHTMLElement(
+      html,
+      "//div[contains(@id, 'content456')]",
+      false
+    )
+    expect(content).toEqual(
+      '<div id="content456">This is <span>some</span> other text!</div>'
+    )
+  })
 
-
-	it('should get multiple elements', () => {
-		const html = `<body>
+  it("should get multiple elements", () => {
+    const html = `<body>
 			  <div id="content123">This is <span>some</span> text!</div>
 			  <div id="content456">This is <span>some</span> other text!</div>
 			  <div id="content789">This is <span>some</span> irrelevant text!</div>
 			</body>`
 
-		const contents = extractHTMLElements(html, '//body/div', true)
-		expect(contents).toEqual(['This is <span>some</span> text!', 'This is <span>some</span> other text!', 'This is <span>some</span> irrelevant text!'])
-	})
+    const contents = extractHTMLElements(html, "//body/div", true)
+    expect(contents).toEqual([
+      "This is <span>some</span> text!",
+      "This is <span>some</span> other text!",
+      "This is <span>some</span> irrelevant text!",
+    ])
+  })
 
-
-	it('should get multiple JSONPaths', () => {
-		const jsonData = `{
+  it("should get multiple JSONPaths", () => {
+    const jsonData = `{
     "firstName": "John",
     "lastName": "doe",
     "age": 26,
@@ -110,1031 +136,1167 @@ describe('HTTP Provider Utils tests', () => {
     ]
 }`
 
-		const contents = extractJSONValueIndexes(jsonData, '$.phoneNumbers[*].number')
+    const contents = extractJSONValueIndexes(
+      jsonData,
+      "$.phoneNumbers[*].number"
+    )
 
-		const res: string[] = []
-		for(const { start, end } of contents) {
-			res.push(jsonData.slice(start, end))
-		}
+    const res: string[] = []
+    for (const { start, end } of contents) {
+      res.push(jsonData.slice(start, end))
+    }
 
-		expect(res).toEqual(['"number": "0123-4567-8888"', '"number": "0123-4567-8910"'])
-	})
+    expect(res).toEqual([
+      '"number": "0123-4567-8888"',
+      '"number": "0123-4567-8910"',
+    ])
+  })
 
-	it('should error on incorrect jsonPath', () => {
-		expect(() => {
-			extractJSONValueIndex(('{"asdf": 1}'), '(alert(origin))')
-		}).toThrow('loc.indexOf is not a function')
-	})
+  it("should error on incorrect jsonPath", () => {
+    expect(() => {
+      extractJSONValueIndex('{"asdf": 1}', "(alert(origin))")
+    }).toThrow("loc.indexOf is not a function")
+  })
 
-	it('should not error on incorrect regex', () => {
-		expect(() => {
-			const regexp = makeRegex('([a-z]+)+$')
-			regexp.test('a'.repeat(31) + '\x00')
-		}).not.toThrow()
-	})
+  it("should not error on incorrect regex", () => {
+    expect(() => {
+      const regexp = makeRegex("([a-z]+)+$")
+      regexp.test("a".repeat(31) + "\x00")
+    }).not.toThrow()
+  })
 
-	it('should hide chunked parts from response', () => {
-		const provider = httpProvider
-		const simpleChunk = Buffer.from('HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n9\r\nchunk 1, \r\n7\r\nchunk 2\r\n0\r\n')
+  it("should hide chunked parts from response", () => {
+    const provider = httpProvider
+    const simpleChunk = Buffer.from(
+      "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n9\r\nchunk 1, \r\n7\r\nchunk 2\r\n0\r\n"
+    )
 
-		if(provider.getResponseRedactions) {
-			const redactions = provider.getResponseRedactions(simpleChunk, {
-				method: 'GET',
-				url: 'https://test.com',
-				'responseMatches': [
+    if (provider.getResponseRedactions) {
+      const redactions = provider.getResponseRedactions(
+        simpleChunk,
+        {
+          method: "GET",
+          url: "https://test.com",
+          responseMatches: [],
+          responseRedactions: [
+            {
+              regex: "chunk 1, chunk 2",
+            },
+          ],
+        },
+        logger
+      )
+      expect(redactions).toEqual([
+        {
+          fromIndex: 15,
+          toIndex: 95,
+        },
+        {
+          fromIndex: 104,
+          toIndex: 109,
+        },
+        {
+          fromIndex: 116,
+          toIndex: 121,
+        },
+      ])
 
-				],
-				'responseRedactions': [
-					{
-						'regex': 'chunk 1, chunk 2'
-					}
-				],
-			}, logger)
-			expect(redactions).toEqual([
-				{
-					'fromIndex': 15,
-					'toIndex': 95
-				},
-				{
-					'fromIndex': 104,
-					'toIndex': 109
-				},
-				{
-					'fromIndex': 116,
-					'toIndex': 121
-				}
-			])
+      let start = 0
+      let str = ""
+      for (const red of redactions) {
+        str += simpleChunk.subarray(start, red.fromIndex)
+        start = red.toIndex
+      }
 
-			let start = 0
-			let str = ''
-			for(const red of redactions) {
-				str += simpleChunk.subarray(start, red.fromIndex)
-				start = red.toIndex
-			}
+      expect(str).toEqual("HTTP/1.1 200 OKchunk 1, chunk 2")
+    }
+  })
 
-			expect(str).toEqual('HTTP/1.1 200 OKchunk 1, chunk 2')
-		}
+  it("should perform complex redactions", () => {
+    const provider = httpProvider
+    const response = Buffer.from(
+      'HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\ncontent-length: 222\r\nConnection: close\r\n\r\n<body> <div id="c1">{"ages":[{"age":"26"},{"age":"27"},{"age":"28"}]}</div> <div id="c2">{"ages":[{"age":"27"},{"age":"28"},{"age":"29"}]}</div> <div id="c3">{"ages":[{"age":"29"},{"age":"30"},{"age":"31"}]}</div></body>\r\n'
+    )
 
-	})
+    if (provider.getResponseRedactions) {
+      const redactions = provider.getResponseRedactions(
+        response,
+        {
+          method: "GET",
+          url: "https://test.com",
+          responseMatches: [],
+          responseRedactions: [
+            {
+              xPath: "//body/div",
+              jsonPath: "$.ages[*].age",
+              regex: "(2|3)\\d",
+            },
+          ],
+        },
+        logger
+      )
+      expect(redactions).toEqual([
+        {
+          fromIndex: 15,
+          toIndex: 122,
+        },
+        {
+          fromIndex: 124,
+          toIndex: 135,
+        },
+        {
+          fromIndex: 137,
+          toIndex: 148,
+        },
+        {
+          fromIndex: 150,
+          toIndex: 191,
+        },
+        {
+          fromIndex: 193,
+          toIndex: 204,
+        },
+        {
+          fromIndex: 206,
+          toIndex: 217,
+        },
+        {
+          fromIndex: 219,
+          toIndex: 260,
+        },
+        {
+          fromIndex: 262,
+          toIndex: 273,
+        },
+        {
+          fromIndex: 275,
+          toIndex: 286,
+        },
+        {
+          fromIndex: 288,
+          toIndex: 307,
+        },
+      ])
 
-	it('should perform complex redactions', () => {
-		const provider = httpProvider
-		const response = Buffer.from('HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\ncontent-length: 222\r\nConnection: close\r\n\r\n<body> <div id="c1">{"ages":[{"age":"26"},{"age":"27"},{"age":"28"}]}</div> <div id="c2">{"ages":[{"age":"27"},{"age":"28"},{"age":"29"}]}</div> <div id="c3">{"ages":[{"age":"29"},{"age":"30"},{"age":"31"}]}</div></body>\r\n')
+      let start = 0
+      let str = ""
+      for (const red of redactions) {
+        str += response.subarray(start, red.fromIndex)
+        start = red.toIndex
+      }
 
-		if(provider.getResponseRedactions) {
-			const redactions = provider.getResponseRedactions(response, {
-				method: 'GET',
-				url: 'https://test.com',
-				'responseMatches': [
+      expect(str).toEqual("HTTP/1.1 200 OK262728272829293031")
+    }
+  })
 
-				],
-				'responseRedactions': [
-					{
-						'xPath': '//body/div',
-						'jsonPath':'$.ages[*].age',
-						'regex':'(2|3)\\d'
-					}
-				],
-			}, logger)
-			expect(redactions).toEqual([
-				{
-					'fromIndex': 15,
-					'toIndex': 122
-				},
-				{
-					'fromIndex': 124,
-					'toIndex': 135
-				},
-				{
-					'fromIndex': 137,
-					'toIndex': 148
-				},
-				{
-					'fromIndex': 150,
-					'toIndex': 191
-				},
-				{
-					'fromIndex': 193,
-					'toIndex': 204
-				},
-				{
-					'fromIndex': 206,
-					'toIndex': 217
-				},
-				{
-					'fromIndex': 219,
-					'toIndex': 260
-				},
-				{
-					'fromIndex': 262,
-					'toIndex': 273
-				},
-				{
-					'fromIndex': 275,
-					'toIndex': 286
-				},
-				{
-					'fromIndex': 288,
-					'toIndex': 307
-				}
-			])
+  it("should perform complex redactions 2", () => {
+    const provider = httpProvider
+    const response = Buffer.from(
+      'HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\ncontent-length: 51\r\nConnection: close\r\n\r\n{"ages":[{"age":"26"},{"age":"27"},{"age":"28"}]}\r\n'
+    )
 
-			let start = 0
-			let str = ''
-			for(const red of redactions) {
-				str += response.subarray(start, red.fromIndex)
-				start = red.toIndex
-			}
+    if (provider.getResponseRedactions) {
+      const redactions = provider.getResponseRedactions(
+        response,
+        {
+          method: "GET",
+          url: "https://test.com",
+          responseMatches: [],
+          responseRedactions: [
+            {
+              jsonPath: "$.ages[*].age",
+              regex: "(2|3)\\d",
+            },
+          ],
+        },
+        logger
+      )
+      expect(redactions).toEqual([
+        {
+          fromIndex: 15,
+          toIndex: 101,
+        },
+        {
+          fromIndex: 103,
+          toIndex: 114,
+        },
+        {
+          fromIndex: 116,
+          toIndex: 127,
+        },
+        {
+          fromIndex: 129,
+          toIndex: 135,
+        },
+      ])
 
-			expect(str).toEqual('HTTP/1.1 200 OK262728272829293031')
-		}
+      let start = 0
+      let str = ""
+      for (const red of redactions) {
+        str += response.subarray(start, red.fromIndex)
+        start = red.toIndex
+      }
 
-	})
+      expect(str).toEqual("HTTP/1.1 200 OK262728")
+    }
+  })
 
-	it('should perform complex redactions 2', () => {
-		const provider = httpProvider
-		const response = Buffer.from('HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\ncontent-length: 51\r\nConnection: close\r\n\r\n{"ages":[{"age":"26"},{"age":"27"},{"age":"28"}]}\r\n')
+  it("should perform complex redactions 3", () => {
+    const provider = httpProvider
+    const response = Buffer.from(
+      'HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\ncontent-length: 222\r\nConnection: close\r\n\r\n<body> <div id="c1">{"ages":[{"age":"26"},{"age":"27"},{"age":"28"}]}</div> <div id="c2">{"ages":[{"age":"27"},{"age":"28"},{"age":"29"}]}</div> <div id="c3">{"ages":[{"age":"29"},{"age":"30"},{"age":"31"}]}</div></body>\r\n'
+    )
 
-		if(provider.getResponseRedactions) {
-			const redactions = provider.getResponseRedactions(response, {
-				method: 'GET',
-				url: 'https://test.com',
-				'responseMatches': [
+    if (provider.getResponseRedactions) {
+      const redactions = provider.getResponseRedactions(
+        response,
+        {
+          method: "GET",
+          url: "https://test.com",
+          responseMatches: [],
+          responseRedactions: [
+            {
+              xPath: "//body/div",
+              regex: '"age":"\\d{2}"',
+            },
+          ],
+        },
+        logger
+      )
+      expect(redactions).toEqual([
+        {
+          fromIndex: 15,
+          toIndex: 115,
+        },
+        {
+          fromIndex: 125,
+          toIndex: 184,
+        },
+        {
+          fromIndex: 194,
+          toIndex: 253,
+        },
+        {
+          fromIndex: 263,
+          toIndex: 307,
+        },
+      ])
 
-				],
-				'responseRedactions': [
-					{
-						'jsonPath':'$.ages[*].age',
-						'regex':'(2|3)\\d'
-					}
-				],
-			}, logger)
-			expect(redactions).toEqual([
-				{
-					'fromIndex': 15,
-					'toIndex': 101
-				},
-				{
-					'fromIndex': 103,
-					'toIndex': 114
-				},
-				{
-					'fromIndex': 116,
-					'toIndex': 127
-				},
-				{
-					'fromIndex': 129,
-					'toIndex': 135
-				}
-			])
+      let start = 0
+      let str = ""
+      for (const red of redactions) {
+        str += response.subarray(start, red.fromIndex)
+        start = red.toIndex
+      }
 
-			let start = 0
-			let str = ''
-			for(const red of redactions) {
-				str += response.subarray(start, red.fromIndex)
-				start = red.toIndex
-			}
+      expect(str).toEqual('HTTP/1.1 200 OK"age":"26""age":"27""age":"29"')
+    }
+  })
 
-			expect(str).toEqual('HTTP/1.1 200 OK262728')
-		}
+  it("should get redactions from chunked response", () => {
+    const provider = httpProvider
+    if (provider.getResponseRedactions) {
+      const redactions = provider.getResponseRedactions(
+        chunkedResp,
+        {
+          method: "GET",
+          url: "https://bookface.ycombinator.com/home",
+          responseMatches: [],
+          responseRedactions: [
+            {
+              xPath: "//script[@id='js-react-on-rails-context']",
+              jsonPath: "$.currentUser",
+            },
+            {
+              xPath: "//script[@data-component-name='BookfaceCsrApp']",
+              jsonPath: "$.hasBookface",
+            },
+            {
+              regex: 'code_version:\\s"[0-9a-f]{40}\\sruby',
+            },
+          ],
+        },
+        logger
+      )
+      expect(redactions).toEqual([
+        {
+          fromIndex: 15,
+          toIndex: 17,
+        },
+        {
+          fromIndex: 52,
+          toIndex: 4760,
+        },
+        {
+          fromIndex: 4820,
+          toIndex: 53268,
+        },
+        {
+          fromIndex: 53507,
+          toIndex: 58705,
+        },
+        {
+          fromIndex: 58723,
+          toIndex: 64093,
+        },
+      ])
+    }
+  })
+  it("should hash provider params consistently", () => {
+    const params: ProviderParams<"http"> = {
+      url: "https://xargs.org/",
+      responseMatches: [
+        {
+          type: "regex",
+          value: "<title.*?(?<name>Aiken &amp; Driscoll &amp; Webb)<\\/title>",
+        },
+      ],
+      method: "GET",
+      responseRedactions: [{ xPath: "./html/head/title" }],
+      geoLocation: "US",
+    }
+    const hash = hashProviderParams(params)
+    expect(hash).toEqual(
+      "0x98fde00dc9f1d88c5166c3b7c911957d52e8f57ea1143ec92aebf529c1e3acd3"
+    )
 
-	})
+    const paramsEx: ProviderParams<"http"> = {
+      geoLocation: "",
+      url: "https://www.linkedin.com/dashboard/",
+      method: "GET",
+      body: "",
+      responseMatches: [
+        {
+          value:
+            "TOTAL_FOLLOWERS&quot;,&quot;$recipeTypes&quot;:[&quot;com.linkedin.c123aee2ba3dfeb6a4580e7effdf5d3f&quot;],&quot;analyticsTitle&quot;:{&quot;textDirection&quot;:&quot;USER_LOCALE&quot;,&quot;text&quot;:&quot;581&quot;",
+          type: "contains",
+        },
+      ],
+      responseRedactions: [
+        {
+          xPath: "{{xpath}}",
+          jsonPath: "",
+          regex:
+            "TOTAL_FOLLOWERS&quot;,&quot;\\$recipeTypes&quot;:(.*?),&quot;analyticsTitle&quot;:{&quot;textDirection&quot;:&quot;USER_LOCALE&quot;,&quot;text&quot;:&quot;(.*?)&quot;",
+        },
+      ],
+    }
+    expect(hashProviderParams(paramsEx)).toEqual(
+      "0xeb0f5b38811b973221eb202ac60abeb41e7808034d5eb56117a367af545127c8"
+    )
+  })
 
-	it('should perform complex redactions 3', () => {
-		const provider = httpProvider
-		const response = Buffer.from('HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\ncontent-length: 222\r\nConnection: close\r\n\r\n<body> <div id="c1">{"ages":[{"age":"26"},{"age":"27"},{"age":"28"}]}</div> <div id="c2">{"ages":[{"age":"27"},{"age":"28"},{"age":"29"}]}</div> <div id="c3">{"ages":[{"age":"29"},{"age":"30"},{"age":"31"}]}</div></body>\r\n')
+  it("should match redacted strings", () => {
+    const testCases: { a: string; b: string }[] = [
+      {
+        a: "aaa",
+        b: "aaa",
+      },
+      {
+        a: "{{abc}}",
+        b: "************",
+      },
+      {
+        a: "{{abc}}d",
+        b: "*d",
+      },
+      {
+        a: "d{{abc}}",
+        b: "d*******************************************",
+      },
+      {
+        a: "d{{abc}}d{{abwewewewec}}",
+        b: "d*d*",
+      },
+      {
+        a: "{{abc}}x{{abwewewewec}}",
+        b: "*x*",
+      },
+    ]
 
-		if(provider.getResponseRedactions) {
-			const redactions = provider.getResponseRedactions(response, {
-				method: 'GET',
-				url: 'https://test.com',
-				'responseMatches': [],
-				'responseRedactions': [
-					{
-						'xPath': '//body/div',
-						'regex': '"age":"\\d{2}"'
-					}
-				],
-			}, logger)
-			expect(redactions).toEqual([
-				{
-					'fromIndex': 15,
-					'toIndex': 115
-				},
-				{
-					'fromIndex': 125,
-					'toIndex': 184
-				},
-				{
-					'fromIndex': 194,
-					'toIndex': 253
-				},
-				{
-					'fromIndex': 263,
-					'toIndex': 307
-				}
-			])
+    for (const { a, b } of testCases) {
+      expect(
+        matchRedactedStrings(strToUint8Array(a), strToUint8Array(b))
+      ).toBeTruthy()
+    }
+  })
 
-			let start = 0
-			let str = ''
-			for(const red of redactions) {
-				str += response.subarray(start, red.fromIndex)
-				start = red.toIndex
-			}
+  it("should not match bad redacted strings", () => {
+    const testCases: { a: string; b: string }[] = [
+      {
+        a: "aaa",
+        b: "aab",
+      },
+      {
+        a: "{{abc}}",
+        b: "",
+      },
+      {
+        a: "",
+        b: "*****",
+      },
+      {
+        a: "{{abc}}{{abc}}d",
+        b: "*d",
+      },
+      {
+        a: "{{yy",
+        b: "*",
+      },
+      {
+        a: "{{abc}}d{{abwewewewec}}",
+        b: "a*d*",
+      },
+      {
+        a: "{abc}}",
+        b: "************",
+      },
+    ]
 
-			expect(str).toEqual('HTTP/1.1 200 OK"age":"26""age":"27""age":"29"')
-		}
-	})
+    for (const { a, b } of testCases) {
+      expect(
+        matchRedactedStrings(strToUint8Array(a), strToUint8Array(b))
+      ).toBeFalsy()
+    }
+  })
 
-	it('should get redactions from chunked response', () => {
-		const provider = httpProvider
-		if(provider.getResponseRedactions) {
-			const redactions = provider.getResponseRedactions(chunkedResp, {
-				method: 'GET',
-				url: 'https://bookface.ycombinator.com/home',
-				'responseMatches': [
+  it("should throw on invalid URL", () => {
+    expect(() =>
+      getProviderValue(
+        {
+          url: "abc",
+          responseMatches: [],
+          responseRedactions: [],
+          method: "GET",
+        },
+        hostPort
+      )
+    ).toThrow("Invalid URL")
+  })
 
-				],
-				'responseRedactions': [
-					{
-						'xPath': "//script[@id='js-react-on-rails-context']",
-						'jsonPath': '$.currentUser',
-					},
-					{
-						'xPath': "//script[@data-component-name='BookfaceCsrApp']",
-						'jsonPath': '$.hasBookface',
-					},
-					{
-						'regex': 'code_version:\\s"[0-9a-f]{40}\\sruby'
-					}
-				],
-			}, logger)
-			expect(redactions).toEqual([
-				{
-					'fromIndex': 15,
-					'toIndex': 17
-				},
-				{
-					'fromIndex': 52,
-					'toIndex': 4760
-				},
-				{
-					'fromIndex': 4820,
-					'toIndex': 53268
-				},
-				{
-					'fromIndex': 53507,
-					'toIndex': 58705
-				},
-				{
-					'fromIndex': 58723,
-					'toIndex': 64093
-				}
-			])
-		}
+  it("should throw on invalid params", () => {
+    expect(() => {
+      assertValidateProviderParams("http", { a: "b", body: 2 })
+    }).toThrow(/^Params validation failed/)
+  })
 
-	})
-	it('should hash provider params consistently', () => {
-		const params: ProviderParams<'http'> = {
-			url: 'https://xargs.org/',
-			responseMatches: [
-				{
-					type: 'regex',
-					value: '<title.*?(?<name>Aiken &amp; Driscoll &amp; Webb)<\\/title>'
-				}
-			],
-			method: 'GET',
-			responseRedactions: [{ xPath: './html/head/title' }],
-			geoLocation: 'US',
-		}
-		const hash = hashProviderParams(params)
-		expect(hash).toEqual('0x98fde00dc9f1d88c5166c3b7c911957d52e8f57ea1143ec92aebf529c1e3acd3')
+  it("should throw on invalid secret params", () => {
+    expect(() => {
+      createRequest(
+        {
+          cookieStr: undefined,
+          authorisationHeader: undefined,
+          headers: undefined,
+        },
+        {
+          url: "abc",
+          responseMatches: [],
+          responseRedactions: [],
+          method: "GET",
+        },
+        logger
+      )
+    }).toThrow("auth parameters are not set")
+  })
 
-
-		const paramsEx: ProviderParams<'http'> = {
-			'geoLocation': '',
-			'url': 'https://www.linkedin.com/dashboard/',
-			'method': 'GET',
-			'body': '',
-			'responseMatches': [
-				{
-					'value': 'TOTAL_FOLLOWERS&quot;,&quot;$recipeTypes&quot;:[&quot;com.linkedin.c123aee2ba3dfeb6a4580e7effdf5d3f&quot;],&quot;analyticsTitle&quot;:{&quot;textDirection&quot;:&quot;USER_LOCALE&quot;,&quot;text&quot;:&quot;581&quot;',
-					'type': 'contains'
-				}],
-			'responseRedactions': [{
-				'xPath': '{{xpath}}',
-				'jsonPath': '',
-				'regex': 'TOTAL_FOLLOWERS&quot;,&quot;\\$recipeTypes&quot;:(.*?),&quot;analyticsTitle&quot;:{&quot;textDirection&quot;:&quot;USER_LOCALE&quot;,&quot;text&quot;:&quot;(.*?)&quot;'
-			}]
-		}
-		expect(hashProviderParams(paramsEx)).toEqual('0xeb0f5b38811b973221eb202ac60abeb41e7808034d5eb56117a367af545127c8')
-	})
-
-	it('should match redacted strings', () => {
-		const testCases: { a: string, b: string }[] = [
-			{
-				a: 'aaa',
-				b: 'aaa'
-			},
-			{
-				a: '{{abc}}',
-				b: '************'
-			},
-			{
-				a: '{{abc}}d',
-				b: '*d'
-			},
-			{
-				a: 'd{{abc}}',
-				b: 'd*******************************************'
-			},
-			{
-				a: 'd{{abc}}d{{abwewewewec}}',
-				b: 'd*d*'
-			},
-			{
-				a: '{{abc}}x{{abwewewewec}}',
-				b: '*x*'
-			}
-		]
-
-		for(const { a, b } of testCases) {
-			expect(matchRedactedStrings(strToUint8Array(a), strToUint8Array(b))).toBeTruthy()
-		}
-	})
-
-	it('should not match bad redacted strings', () => {
-		const testCases: { a: string, b: string }[] = [
-			{
-				a: 'aaa',
-				b: 'aab'
-			},
-			{
-				a: '{{abc}}',
-				b: ''
-			},
-			{
-				a: '',
-				b: '*****'
-			},
-			{
-				a: '{{abc}}{{abc}}d',
-				b: '*d'
-			},
-			{
-				a: '{{yy',
-				b: '*'
-			},
-			{
-				a: '{{abc}}d{{abwewewewec}}',
-				b: 'a*d*'
-			},
-			{
-				a: '{abc}}',
-				b: '************'
-			}
-		]
-
-		for(const { a, b } of testCases) {
-			expect(matchRedactedStrings(strToUint8Array(a), strToUint8Array(b))).toBeFalsy()
-		}
-	})
-
-
-	it('should throw on invalid URL', () => {
-		expect(
-			() => (
-				getProviderValue(
-					{
-						url: 'abc',
-						responseMatches: [],
-						responseRedactions: [],
-						method: 'GET'
-					},
-					hostPort
-				)
-			)
-		).toThrow('Invalid URL')
-	})
-
-	it('should throw on invalid params', () => {
-		expect(() => {
-			assertValidateProviderParams('http', { a: 'b', body: 2 })
-		}).toThrow(/^Params validation failed/)
-	})
-
-	it('should throw on invalid secret params', () => {
-		expect(() => {
-			createRequest({
-				cookieStr: undefined,
-				authorisationHeader: undefined,
-				headers: undefined
-			}, {
-				url: 'abc',
-				responseMatches: [],
-				responseRedactions: [],
-				method: 'GET'
-			}, logger)
-		}).toThrow('auth parameters are not set')
-	})
-
-	it('should return empty redactions', () => {
-		const res =
-            `HTTP/1.1 200 OK\r
+  it("should return empty redactions", () => {
+    const res = `HTTP/1.1 200 OK\r
 Content-Length: 0\r
 Connection: close\r
 Content-Type: text/html; charset=utf-8\r
 \r
 `
-		const redactions = (getResponseRedactions) ?
-			getResponseRedactions(strToUint8Array(res), {
-				url: 'abc',
-				responseMatches: [],
-				responseRedactions: [],
-				method: 'GET'
-			}, logger)
-			: undefined
-		expect(redactions).toHaveLength(0)
-	})
+    const redactions = getResponseRedactions
+      ? getResponseRedactions(
+          strToUint8Array(res),
+          {
+            url: "abc",
+            responseMatches: [],
+            responseRedactions: [],
+            method: "GET",
+          },
+          logger
+        )
+      : undefined
+    expect(redactions).toHaveLength(0)
+  })
 
-	it('should throw on empty body', () => {
-		const res =
-            `HTTP/1.1 200 OK\r
+  it("should throw on empty body", () => {
+    const res = `HTTP/1.1 200 OK\r
 Content-Length: 0\r
 Connection: close\r
 Content-Type: text/html; charset=utf-8\r
 \r
 `
-		expect(() => {
-			if(getResponseRedactions) {
-				getResponseRedactions(strToUint8Array(res), {
-					url: 'abc',
-					responseMatches: [],
-					responseRedactions: [{
-						regex: 'abc'
-					}],
-					method: 'GET'
-				}, logger)
-			}
-		}).toThrow('Failed to find response body')
-	})
+    expect(() => {
+      if (getResponseRedactions) {
+        getResponseRedactions(
+          strToUint8Array(res),
+          {
+            url: "abc",
+            responseMatches: [],
+            responseRedactions: [
+              {
+                regex: "abc",
+              },
+            ],
+            method: "GET",
+          },
+          logger
+        )
+      }
+    }).toThrow("Failed to find response body")
+  })
 
-	it('should throw on bad xpath', () => {
-		const res =
-            `HTTP/1.1 200 OK\r
+  it("should throw on bad xpath", () => {
+    const res = `HTTP/1.1 200 OK\r
 Content-Length: 1\r
 Connection: close\r
 Content-Type: text/html; charset=utf-8\r
 \r
 1`
-		expect(() => {
-			if(getResponseRedactions) {
-				getResponseRedactions(strToUint8Array(res), {
-					url: 'abc',
-					responseMatches: [],
-					responseRedactions: [{
-						xPath: 'abc'
-					}],
-					method: 'GET'
-				}, logger)
-			}
-		}).toThrow('Failed to find XPath: \"abc\"')
-	})
+    expect(() => {
+      if (getResponseRedactions) {
+        getResponseRedactions(
+          strToUint8Array(res),
+          {
+            url: "abc",
+            responseMatches: [],
+            responseRedactions: [
+              {
+                xPath: "abc",
+              },
+            ],
+            method: "GET",
+          },
+          logger
+        )
+      }
+    }).toThrow('Failed to find XPath: \"abc\"')
+  })
 
-	it('should throw on bad jsonPath', () => {
-		const res =
-            `HTTP/1.1 200 OK\r
+  it("should throw on bad jsonPath", () => {
+    const res = `HTTP/1.1 200 OK\r
 Content-Length: 1\r
 Connection: close\r
 Content-Type: text/html; charset=utf-8\r
 \r
 1`
-		expect(() => {
-			if(getResponseRedactions) {
-				getResponseRedactions(strToUint8Array(res), {
-					url: 'abc',
-					responseMatches: [],
-					responseRedactions: [{
-						jsonPath: 'abc'
-					}],
-					method: 'GET'
-				}, logger)
-			}
-		}).toThrow('jsonPath not found')
-	})
+    expect(() => {
+      if (getResponseRedactions) {
+        getResponseRedactions(
+          strToUint8Array(res),
+          {
+            url: "abc",
+            responseMatches: [],
+            responseRedactions: [
+              {
+                jsonPath: "abc",
+              },
+            ],
+            method: "GET",
+          },
+          logger
+        )
+      }
+    }).toThrow("jsonPath not found")
+  })
 
-	it('should throw on bad regex', () => {
-		const res =
-            `HTTP/1.1 200 OK\r
+  it("should throw on bad regex", () => {
+    const res = `HTTP/1.1 200 OK\r
 Content-Length: 1\r
 Connection: close\r
 Content-Type: text/html; charset=utf-8\r
 \r
 1`
-		expect(() => {
-			if(getResponseRedactions) {
-				getResponseRedactions(strToUint8Array(res), {
-					url: 'abc',
-					responseMatches: [],
-					responseRedactions: [{
-						regex: 'abc'
-					}],
-					method: 'GET'
-				}, logger)
-			}
-		}).toThrow('regexp abc does not match found element \'1\'')
-	})
+    expect(() => {
+      if (getResponseRedactions) {
+        getResponseRedactions(
+          strToUint8Array(res),
+          {
+            url: "abc",
+            responseMatches: [],
+            responseRedactions: [
+              {
+                regex: "abc",
+              },
+            ],
+            method: "GET",
+          },
+          logger
+        )
+      }
+    }).toThrow("regexp abc does not match found element '1'")
+  })
 
-	it('should throw on bad method', () => {
+  it("should throw on bad method", () => {
+    expect(() => {
+      assertValidProviderReceipt(
+        transcript,
+        {
+          url: "abc",
+          responseMatches: [],
+          responseRedactions: [],
+          method: "POST",
+        },
+        logger
+      )
+    }).toThrow("Invalid method: get")
+  })
 
-		expect(() => {
-			assertValidProviderReceipt(transcript, {
-				url: 'abc',
-				responseMatches: [],
-				responseRedactions: [],
-				method: 'POST'
-			}, logger)
-		}).toThrow('Invalid method: get')
-	})
+  it("should throw on bad protocol", () => {
+    expect(() => {
+      assertValidProviderReceipt(
+        transcript,
+        {
+          url: "http://xargs.com",
+          responseMatches: [],
+          responseRedactions: [],
+          method: "GET",
+        },
+        logger
+      )
+    }).toThrow("Expected protocol: https, found: http:")
+  })
 
-	it('should throw on bad protocol', () => {
+  it("should throw on duplicate groups", () => {
+    expect(() => {
+      assertValidProviderReceipt(
+        transcript,
+        {
+          url: "https://xargs.{{abc}}",
+          responseMatches: [
+            {
+              type: "regex",
+              value: "(?<abc>.)",
+            },
+          ],
+          responseRedactions: [],
+          method: "GET",
+          paramValues: {
+            abc: "org",
+          },
+        },
+        logger
+      )
+    }).toThrow("Duplicate parameter abc")
+  })
 
-		expect(() => {
-			assertValidProviderReceipt(transcript, {
-				url: 'http://xargs.com',
-				responseMatches: [],
-				responseRedactions: [],
-				method: 'GET'
-			}, logger)
-		}).toThrow('Expected protocol: https, found: http:')
-	})
+  it("should throw on bad path", () => {
+    expect(() => {
+      assertValidProviderReceipt(
+        transcript,
+        {
+          url: "https://xargs.com/abc",
+          responseMatches: [],
+          responseRedactions: [],
+          method: "GET",
+        },
+        logger
+      )
+    }).toThrow("Expected path: /abc, found: /")
+  })
 
-	it('should throw on duplicate groups', () => {
+  it("should throw on bad host", () => {
+    expect(() => {
+      assertValidProviderReceipt(
+        transcript,
+        {
+          url: "https://abc.com/",
+          responseMatches: [],
+          responseRedactions: [],
+          method: "GET",
+        },
+        logger
+      )
+    }).toThrow("Expected host: abc.com, found: xargs.org")
+  })
 
-		expect(() => {
-			assertValidProviderReceipt(transcript, {
-				url: 'https://xargs.{{abc}}',
-				responseMatches: [{
-					type: 'regex',
-					value: '(?<abc>.)'
-				}],
-				responseRedactions: [],
-				method: 'GET',
-				paramValues: {
-					'abc': 'org'
-				}
-			}, logger)
-		}).toThrow('Duplicate parameter abc')
-	})
+  it("should throw on bad OK string", () => {
+    const temp = cloneObject(transcript)
+    // changes the status ("OK") text to something else
+    // it'll be in the first server response packet
+    const firstServerMsg = temp.find(
+      (x, index) => x.sender === "server" && index !== 0
+    )!
+    firstServerMsg.message[0] = 32
+    expect(() => {
+      assertValidProviderReceipt(
+        temp,
+        {
+          url: "https://xargs.org/",
+          responseMatches: [],
+          responseRedactions: [],
+          method: "GET",
+        },
+        logger
+      )
+    }).toThrow('Response did not start with \"HTTP/1.1 200\"')
+  })
 
-	it('should throw on bad path', () => {
+  it("should throw on bad close header", () => {
+    const temp = cloneObject(transcript)
+    const clientMsgWithClose = temp.find(x => {
+      if (x.sender !== "client") {
+        return false
+      }
 
-		expect(() => {
-			assertValidProviderReceipt(transcript, {
-				url: 'https://xargs.com/abc',
-				responseMatches: [],
-				responseRedactions: [],
-				method: 'GET'
-			}, logger)
-		}).toThrow('Expected path: /abc, found: /')
-	})
+      return uint8ArrayToStr(x.message).includes("Connection: close")
+    })!
+    clientMsgWithClose.message[68] = 102
+    expect(() => {
+      assertValidProviderReceipt(
+        temp,
+        {
+          url: "https://xargs.org/",
+          responseMatches: [],
+          responseRedactions: [],
+          method: "GET",
+        },
+        logger
+      )
+    }).toThrow('Connection header must be \"close\"')
+  })
 
-	it('should throw on bad host', () => {
-		expect(() => {
-			assertValidProviderReceipt(transcript, {
-				url: 'https://abc.com/',
-				responseMatches: [],
-				responseRedactions: [],
-				method: 'GET'
-			}, logger)
-		}).toThrow('Expected host: abc.com, found: xargs.org')
-	})
+  it("should throw on bad body", () => {
+    expect(() => {
+      assertValidProviderReceipt(
+        transcript,
+        {
+          url: "https://xargs.org/",
+          responseMatches: [],
+          responseRedactions: [],
+          method: "GET",
+          body: "abc",
+        },
+        logger
+      )
+    }).toThrow("request body mismatch")
+  })
 
-	it('should throw on bad OK string', () => {
-		const temp = cloneObject(transcript)
-		// changes the status ("OK") text to something else
-		// it'll be in the first server response packet
-		const firstServerMsg = temp.find((x, index) => x.sender === 'server' && index !== 0)!
-		firstServerMsg.message[0] = 32
-		expect(() => {
-			assertValidProviderReceipt(temp, {
-				url: 'https://xargs.org/',
-				responseMatches: [],
-				responseRedactions: [],
-				method: 'GET'
-			}, logger)
-		}).toThrow('Response did not start with \"HTTP/1.1 200\"')
-	})
+  it("should throw on bad regex match", () => {
+    expect(() => {
+      assertValidProviderReceipt(
+        transcript,
+        {
+          url: "https://xargs.org/",
+          responseMatches: [
+            {
+              type: "regex",
+              value: "abc",
+            },
+          ],
+          responseRedactions: [],
+          method: "GET",
+        },
+        logger
+      )
+    }).toThrow('Invalid receipt. Regex \"abc\" didn\'t match')
+  })
 
-	it('should throw on bad close header', () => {
-		const temp = cloneObject(transcript)
-		const clientMsgWithClose = temp.find((x) => {
-			if(x.sender !== 'client') {
-				return false
-			}
+  it("should throw on bad contains match", () => {
+    expect(() => {
+      assertValidProviderReceipt(
+        transcript,
+        {
+          url: "https://xargs.org/",
+          responseMatches: [
+            {
+              type: "contains",
+              value: "abc",
+            },
+          ],
+          responseRedactions: [],
+          method: "GET",
+        },
+        logger
+      )
+    }).toThrow('Invalid receipt. Response does not contain \"abc\"')
+  })
 
-			return uint8ArrayToStr(x.message)
-				.includes('Connection: close')
-		})!
-		clientMsgWithClose.message[68] = 102
-		expect(() => {
-			assertValidProviderReceipt(temp, {
-				url: 'https://xargs.org/',
-				responseMatches: [],
-				responseRedactions: [],
-				method: 'GET'
-			}, logger)
-		}).toThrow('Connection header must be \"close\"')
-	})
+  it("should get geo", () => {
+    const geo = getProviderValue(
+      {
+        geoLocation: "{{geo}}",
+        paramValues: {
+          geo: "US",
+        },
+      } as unknown as ProviderParams<"http">,
+      geoLocation
+    )
+    expect(geo).toEqual("US")
+  })
 
-	it('should throw on bad body', () => {
-		expect(() => {
-			assertValidProviderReceipt(transcript, {
-				url: 'https://xargs.org/',
-				responseMatches: [],
-				responseRedactions: [],
-				method: 'GET',
-				body: 'abc'
-			}, logger)
-		}).toThrow('request body mismatch')
-	})
+  it("should throw on bad geo param", () => {
+    expect(() => {
+      // @ts-ignore
+      geoLocation({
+        geoLocation: "{{geo}}",
+        paramValues: {
+          geo1: "US",
+        },
+      })
+    }).toThrow('parameter "geo" value not found in templateParams')
+  })
 
-	it('should throw on bad regex match', () => {
-		expect(() => {
-			assertValidProviderReceipt(transcript, {
-				url: 'https://xargs.org/',
-				responseMatches: [{
-					type: 'regex',
-					value: 'abc'
-				}],
-				responseRedactions: [],
-				method: 'GET',
-			}, logger)
-		}).toThrow('Invalid receipt. Regex \"abc\" didn\'t match')
-	})
+  it("should return empty geo", () => {
+    expect(
+      // @ts-ignore
+      geoLocation({
+        geoLocation: "",
+      })
+    ).toEqual(undefined)
+  })
 
-	it('should throw on bad contains match', () => {
-		expect(() => {
-			assertValidProviderReceipt(transcript, {
-				url: 'https://xargs.org/',
-				responseMatches: [{
-					type: 'contains',
-					value: 'abc'
-				}],
-				responseRedactions: [],
-				method: 'GET',
-			}, logger)
-		}).toThrow('Invalid receipt. Response does not contain \"abc\"')
-	})
+  it("should throw on bad param in url", () => {
+    expect(() => {
+      // @ts-ignore
+      return hostPort({
+        url: "https://xargs.{{param1}}",
+      })
+    }).toThrow('parameter "param1" value not found in templateParams')
+  })
 
-	it('should get geo', () => {
-		const geo = getProviderValue(
-			{
-				geoLocation: '{{geo}}',
-				paramValues: {
-					'geo': 'US'
-				}
-			} as unknown as ProviderParams<'http'>,
-			geoLocation
-		)
-		expect(geo).toEqual('US')
-	})
+  it("should throw on bad url", () => {
+    expect(() => {
+      // @ts-ignore
+      hostPort({
+        url: "file:///C:/path",
+      })
+    }).toThrow("url is incorrect")
+  })
 
-	it('should throw on bad geo param', () => {
+  it("should throw on bad match type", () => {
+    expect(() => {
+      const params = {
+        url: "https://xargs.org/",
+        responseMatches: [
+          {
+            type: "abc",
+            value: "abc",
+          },
+        ],
+        responseRedactions: [],
+        method: "GET",
+      }
+      // @ts-ignore
+      assertValidProviderReceipt(transcript, params, logger)
+    }).toThrow("Invalid response match type abc")
+  })
 
-		expect(() => {
-			// @ts-ignore
-			geoLocation({
-				geoLocation: '{{geo}}',
-				paramValues: {
-					'geo1': 'US'
-				}
-			})
-		}).toThrow('parameter "geo" value not found in templateParams')
-	})
+  it("should throw on no non present params", () => {
+    expect(() => {
+      assertValidProviderReceipt(
+        transcript,
+        {
+          url: "https://xargs.{{org}}/",
+          responseMatches: [
+            {
+              type: "contains",
+              value: "abc",
+            },
+          ],
+          responseRedactions: [],
+          method: "GET",
+        },
+        logger
+      )
+    }).toThrow("Expected host: xargs.{{org}}, found: xargs.org")
+  })
 
-	it('should return empty geo', () => {
+  it("should throw on non present secret params", () => {
+    expect(() => {
+      createRequest(
+        {
+          cookieStr: "abc",
+        },
+        {
+          url: "https://xargs.{{com}}",
+          responseMatches: [],
+          responseRedactions: [],
+          method: "GET",
+        },
+        logger
+      )
+    }).toThrow(
+      "parameter's \"com\" value not found in paramValues and secret parameter's paramValues"
+    )
+  })
 
-		expect(// @ts-ignore
-			geoLocation({
-				geoLocation: '',
-			})).toEqual(undefined)
-	})
+  it("should replace params in body correctly", () => {
+    const params: ProviderParams<"http"> = {
+      url: "https://example.{{param1}}/",
+      method: "GET",
+      body: "hello {{h}} {{b}} {{h1h1h1h1h1h1h1}} {{h2}} {{a}} {{h1h1h1h1h1h1h1}} {{h}} {{a}} {{h2}} {{a}} {{b}} world",
+      geoLocation: "US",
+      responseMatches: [
+        {
+          type: "regex",
+          value: "<title.*?(?<domain>{{param2}} Domain)<\\/title>",
+        },
+      ],
+      responseRedactions: [
+        {
+          xPath: "./html/head/{{param3}}",
+        },
+        {
+          xPath: "/html/body/div/p[1]/text()",
+        },
+      ],
+      paramValues: {
+        param1: "com",
+        param2: "Example",
+        param3: "title",
+        what: "illustrative",
+        a: "{{b}}",
+        b: "aaaaa",
+      },
+      headers: {
+        "user-agent": "Mozilla/5.0",
+      },
+    }
+    const secretParams = {
+      cookieStr: "<cookie-str>",
+      paramValues: {
+        h: "crazy",
+        h1h1h1h1h1h1h1: "crazy1",
+        h2: "crazy2",
+      },
+      authorisationHeader: "abc",
+    }
+    const req = createRequest(secretParams, params, logger)
 
-	it('should throw on bad param in url', () => {
+    const reqText = uint8ArrayToStr(req.data as Uint8Array)
+    expect(reqText).toContain(
+      "hello crazy aaaaa crazy1 crazy2 {{b}} crazy1 crazy {{b}} crazy2 {{b}} aaaaa world"
+    )
+    expect(req.redactions.length).toEqual(7)
+    expect(getRedaction(0)).toEqual(
+      "Cookie: <cookie-str>\r\nAuthorization: abc"
+    )
+    expect(getRedaction(1)).toEqual("crazy")
+    expect(getRedaction(2)).toEqual("crazy1")
+    expect(getRedaction(3)).toEqual("crazy2")
+    expect(getRedaction(4)).toEqual("crazy1")
+    expect(getRedaction(5)).toEqual("crazy")
+    expect(getRedaction(6)).toEqual("crazy2")
 
-		expect(() => {
-			// @ts-ignore
-			return hostPort(
-				{
-					url: 'https://xargs.{{param1}}'
-				})
-		})
-			.toThrow('parameter "param1" value not found in templateParams')
-	})
+    function getRedaction(index: number) {
+      return uint8ArrayToStr(
+        (req.data as Uint8Array).slice(
+          req.redactions[index].fromIndex,
+          req.redactions[index].toIndex
+        )
+      )
+    }
+  })
 
-	it('should throw on bad url', () => {
+  it("should replace params in body correctly case 2", () => {
+    const params: ProviderParams<"http"> = {
+      body: '{"includeGroups":{{REQ_DAT}},"includeLogins":{{REQ_SECRET}},"includeVerificationStatus":false}',
+      geoLocation: "",
+      method: "POST",
+      paramValues: {
+        REQ_DAT: "false",
+        username: "testyreclaim",
+      },
+      responseMatches: [
+        {
+          type: "contains",
+          value: '"userName":"{{username}}"',
+        },
+      ],
+      responseRedactions: [
+        {
+          jsonPath: "$.userName",
+          regex: '"userName":"(.*)"',
+          xPath: "",
+        },
+      ],
+      url: "https://www.kaggle.com",
+    }
+    const secretParams = {
+      paramValues: {
+        REQ_SECRET: "false",
+      },
+      authorisationHeader: "abc",
+    }
 
-		expect(() => {
-			// @ts-ignore
-			hostPort(
-				{
-					url: 'file:///C:/path'
-				})
-		})
-			.toThrow('url is incorrect')
-	})
+    const req = createRequest(secretParams, params, logger)
 
-	it('should throw on bad match type', () => {
-		expect(() => {
-			const params = {
-				url: 'https://xargs.org/',
-				responseMatches: [{
-					type: 'abc',
-					value: 'abc'
-				}],
-				responseRedactions: [],
-				method: 'GET',
-			}
-			// @ts-ignore
-			assertValidProviderReceipt(transcript, params, logger)
-		}).toThrow('Invalid response match type abc')
-	})
+    const reqText = uint8ArrayToStr(req.data as Uint8Array)
+    expect(reqText).toContain(
+      '{\"includeGroups\":false,\"includeLogins\":false,\"includeVerificationStatus\":false}'
+    )
+    expect(req.redactions.length).toEqual(2)
+    expect(getRedaction(0)).toEqual("Authorization: abc")
+    expect(getRedaction(1)).toEqual("false")
 
-	it('should throw on no non present params', () => {
-		expect(() => {
-			assertValidProviderReceipt(transcript, {
-				url: 'https://xargs.{{org}}/',
-				responseMatches: [{
-					type: 'contains',
-					value: 'abc'
-				}],
-				responseRedactions: [],
-				method: 'GET',
-			}, logger)
-		}).toThrow('Expected host: xargs.{{org}}, found: xargs.org')
-	})
+    function getRedaction(index: number) {
+      return uint8ArrayToStr(
+        (req.data as Uint8Array).slice(
+          req.redactions[index].fromIndex,
+          req.redactions[index].toIndex
+        )
+      )
+    }
+  })
 
-	it('should throw on non present secret params', () => {
-		expect(() => {
-			createRequest({
-				cookieStr: 'abc',
+  describe("OPRF", () => {
+    it("should handle OPRF replacements", async () => {
+      const params: ProviderParams<"http"> = {
+        url: "https://example.com/",
+        method: "GET",
+        responseMatches: [
+          {
+            type: "regex",
+            value: "<title>(?<domain>.+)<\\/title>",
+          },
+        ],
+        responseRedactions: [
+          {
+            regex: "<title>(?<domain>.+)<\\/title>",
+            hash: "oprf",
+          },
+        ],
+      }
+      const res = Buffer.from(
+        "SFRUUC8xLjEgMjAwIE9LDQpBY2NlcHQtUmFuZ2VzOiBieXRlcw0KQWdlOiAzNzIxNDcNCkNhY2hlLUNvbnRyb2w6IG1heC1hZ2U9NjA0ODAwDQpDb250ZW50LVR5cGU6IHRleHQvaHRtbDsgY2hhcnNldD1VVEYtOA0KRGF0ZTogVGh1LCAyMSBOb3YgMjAyNCAwNTozOTo0NiBHTVQNCkV0YWc6ICIzMTQ3NTI2OTQ3Ig0KRXhwaXJlczogVGh1LCAyOCBOb3YgMjAyNCAwNTozOTo0NiBHTVQNCkxhc3QtTW9kaWZpZWQ6IFRodSwgMTcgT2N0IDIwMTkgMDc6MTg6MjYgR01UDQpTZXJ2ZXI6IEVDQWNjIChsYWMvNTVCNSkNClZhcnk6IEFjY2VwdC1FbmNvZGluZw0KWC1DYWNoZTogSElUDQpDb250ZW50LUxlbmd0aDogMTI1Ng0KQ29ubmVjdGlvbjogY2xvc2UNCg0KPCFkb2N0eXBlIGh0bWw+CjxodG1sPgo8aGVhZD4KICAgIDx0aXRsZT5FeGFtcGxlIERvbWFpbjwvdGl0bGU+CgogICAgPG1ldGEgY2hhcnNldD0idXRmLTgiIC8+CiAgICA8bWV0YSBodHRwLWVxdWl2PSJDb250ZW50LXR5cGUiIGNvbnRlbnQ9InRleHQvaHRtbDsgY2hhcnNldD11dGYtOCIgLz4KICAgIDxtZXRhIG5hbWU9InZpZXdwb3J0IiBjb250ZW50PSJ3aWR0aD1kZXZpY2Utd2lkdGgsIGluaXRpYWwtc2NhbGU9MSIgLz4KICAgIDxzdHlsZSB0eXBlPSJ0ZXh0L2NzcyI+CiAgICBib2R5IHsKICAgICAgICBiYWNrZ3JvdW5kLWNvbG9yOiAjZjBmMGYyOwogICAgICAgIG1hcmdpbjogMDsKICAgICAgICBwYWRkaW5nOiAwOwogICAgICAgIGZvbnQtZmFtaWx5OiAtYXBwbGUtc3lzdGVtLCBzeXN0ZW0tdWksIEJsaW5rTWFjU3lzdGVtRm9udCwgIlNlZ29lIFVJIiwgIk9wZW4gU2FucyIsICJIZWx2ZXRpY2EgTmV1ZSIsIEhlbHZldGljYSwgQXJpYWwsIHNhbnMtc2VyaWY7CiAgICAgICAgCiAgICB9CiAgICBkaXYgewogICAgICAgIHdpZHRoOiA2MDBweDsKICAgICAgICBtYXJnaW46IDVlbSBhdXRvOwogICAgICAgIHBhZGRpbmc6IDJlbTsKICAgICAgICBiYWNrZ3JvdW5kLWNvbG9yOiAjZmRmZGZmOwogICAgICAgIGJvcmRlci1yYWRpdXM6IDAuNWVtOwogICAgICAgIGJveC1zaGFkb3c6IDJweCAzcHggN3B4IDJweCByZ2JhKDAsMCwwLDAuMDIpOwogICAgfQogICAgYTpsaW5rLCBhOnZpc2l0ZWQgewogICAgICAgIGNvbG9yOiAjMzg0ODhmOwogICAgICAgIHRleHQtZGVjb3JhdGlvbjogbm9uZTsKICAgIH0KICAgIEBtZWRpYSAobWF4LXdpZHRoOiA3MDBweCkgewogICAgICAgIGRpdiB7CiAgICAgICAgICAgIG1hcmdpbjogMCBhdXRvOwogICAgICAgICAgICB3aWR0aDogYXV0bzsKICAgICAgICB9CiAgICB9CiAgICA8L3N0eWxlPiAgICAKPC9oZWFkPgoKPGJvZHk+CjxkaXY+CiAgICA8aDE+RXhhbXBsZSBEb21haW48L2gxPgogICAgPHA+VGhpcyBkb21haW4gaXMgZm9yIHVzZSBpbiBpbGx1c3RyYXRpdmUgZXhhbXBsZXMgaW4gZG9jdW1lbnRzLiBZb3UgbWF5IHVzZSB0aGlzCiAgICBkb21haW4gaW4gbGl0ZXJhdHVyZSB3aXRob3V0IHByaW9yIGNvb3JkaW5hdGlvbiBvciBhc2tpbmcgZm9yIHBlcm1pc3Npb24uPC9wPgogICAgPHA+PGEgaHJlZj0iaHR0cHM6Ly93d3cuaWFuYS5vcmcvZG9tYWlucy9leGFtcGxlIj5Nb3JlIGluZm9ybWF0aW9uLi4uPC9hPjwvcD4KPC9kaXY+CjwvYm9keT4KPC9odG1sPgo=",
+        "base64"
+      )
+      const redactedStr = await getRedactedStr(res, params)
+      // the transcript contained "Example Domain" in the title
+      // which should be replaced with the hash
+      expect(redactedStr).toContain("<title>AAAAAAAAAAAAAA</title>")
+    })
 
-			}, {
-				url: 'https://xargs.{{com}}',
-				responseMatches: [],
-				responseRedactions: [],
-				method: 'GET'
-			}, logger)
-		}).toThrow('parameter\'s \"com\" value not found in paramValues and secret parameter\'s paramValues')
-	})
+    it("should handle OPRF replacements in a chunked res", async () => {
+      const params: ProviderParams<"http"> = {
+        url: "https://example.com/",
+        method: "GET",
+        responseMatches: [
+          {
+            type: "regex",
+            value: '\"name\":\"(?<name>.+?)\"',
+          },
+        ],
+        responseRedactions: [
+          {
+            regex: '\"name\":\"(?<name>.+?)\"',
+            hash: "oprf",
+          },
+        ],
+      }
+      const arr = strToUint8Array(RES_CHUNKED_PARTIAL_BODY)
+      const redactedStr = await getRedactedStr(arr, params)
+      // "name":"John" should be replaced with the hash
+      expect(redactedStr).toContain('"name":"AAAA"')
+    })
 
-	it('should replace params in body correctly', () => {
-		const params: ProviderParams<'http'> = {
-			url: 'https://example.{{param1}}/',
-			method: 'GET',
-			body: 'hello {{h}} {{b}} {{h1h1h1h1h1h1h1}} {{h2}} {{a}} {{h1h1h1h1h1h1h1}} {{h}} {{a}} {{h2}} {{a}} {{b}} world',
-			geoLocation: 'US',
-			responseMatches: [{
-				type: 'regex',
-				value: '<title.*?(?<domain>{{param2}} Domain)<\\/title>',
-			}],
-			responseRedactions: [{
-				xPath: './html/head/{{param3}}',
-			}, {
-				xPath: '/html/body/div/p[1]/text()'
-			}],
-			paramValues: {
-				param1: 'com',
-				param2: 'Example',
-				param3: 'title',
-				what: 'illustrative',
-				a:'{{b}}',
-				b:'aaaaa'
-			},
-			headers: {
-				'user-agent': 'Mozilla/5.0',
-			}
-		}
-		const secretParams = {
-			cookieStr: '<cookie-str>',
-			paramValues: {
-				h: 'crazy',
-				h1h1h1h1h1h1h1: 'crazy1',
-				h2: 'crazy2',
-			},
-			authorisationHeader: 'abc'
-		}
-		const req = createRequest(secretParams, params, logger)
+    it("should gracefully error when OPRF spans multiple chunks", () => {
+      const params: ProviderParams<"http"> = {
+        url: "https://example.com/",
+        method: "GET",
+        responseMatches: [
+          {
+            type: "regex",
+            value: '\"house\":\"(?<house>.+?)\"',
+          },
+        ],
+        responseRedactions: [
+          {
+            regex: '\"house\":\"(?<house>.+?)\"',
+            hash: "oprf",
+          },
+        ],
+      }
 
-		const reqText = uint8ArrayToStr(req.data as Uint8Array)
-		expect(reqText).toContain('hello crazy aaaaa crazy1 crazy2 {{b}} crazy1 crazy {{b}} crazy2 {{b}} aaaaa world')
-		expect(req.redactions.length).toEqual(7)
-		expect(getRedaction(0)).toEqual('Cookie: <cookie-str>\r\nAuthorization: abc')
-		expect(getRedaction(1)).toEqual('crazy')
-		expect(getRedaction(2)).toEqual('crazy1')
-		expect(getRedaction(3)).toEqual('crazy2')
-		expect(getRedaction(4)).toEqual('crazy1')
-		expect(getRedaction(5)).toEqual('crazy')
-		expect(getRedaction(6)).toEqual('crazy2')
+      const arr = strToUint8Array(RES_CHUNKED_PARTIAL_BODY)
+      expect(() => getResponseRedactions!(arr, params, logger)).toThrow(
+        /cannot be performed/
+      )
+    })
+  })
 
-		function getRedaction(index: number) {
-			return uint8ArrayToStr((req.data as Uint8Array).slice(req.redactions[index].fromIndex, req.redactions[index].toIndex))
-		}
-	})
+  it("should replace secret params in URL correctly", () => {
+    const params: ProviderParams<"http"> = {
+      body: "",
+      geoLocation: "",
+      method: "POST",
+      paramValues: {
+        username: "testyreclaim",
+      },
+      responseMatches: [
+        {
+          type: "contains",
+          value: '"userName":"{{username}}"',
+        },
+      ],
+      responseRedactions: [
+        {
+          jsonPath: "$.userName",
+          regex: '"userName":"(.*)"',
+          xPath: "",
+        },
+      ],
+      url: "https://www.kaggle.com/{{auth_token}}?request={{param_request}}",
+    }
+    const secretParams = {
+      paramValues: {
+        auth_token: "1234567890",
+        param_request: "select * from users",
+      },
+      authorisationHeader: "abc",
+    }
 
-	it('should replace params in body correctly case 2', () => {
-		const params: ProviderParams<'http'> = {
-			'body': '{"includeGroups":{{REQ_DAT}},"includeLogins":{{REQ_SECRET}},"includeVerificationStatus":false}',
-			'geoLocation': '',
-			'method': 'POST',
-			'paramValues': {
-				'REQ_DAT': 'false',
-				'username': 'testyreclaim'
-			},
-			'responseMatches': [
-				{
-					'type': 'contains',
-					'value': '"userName":"{{username}}"'
-				}
-			],
-			'responseRedactions': [
-				{
-					'jsonPath': '$.userName',
-					'regex': '"userName":"(.*)"',
-					'xPath': ''
-				}
-			],
-			'url': 'https://www.kaggle.com'
-		}
-		const secretParams = {
-			'paramValues': {
-				'REQ_SECRET': 'false'
-			},
-			authorisationHeader: 'abc'
-		}
+    const req = createRequest(secretParams, params, logger)
 
-		const req = createRequest(secretParams, params, logger)
+    const reqText = uint8ArrayToStr(req.data as Uint8Array)
+    expect(reqText).toContain(
+      "POST /1234567890?request=select * from users HTTP/1.1"
+    )
+    expect(req.redactions.length).toEqual(3)
+    expect(getRedaction(2)).toEqual("Authorization: abc")
+    expect(getRedaction(0)).toEqual("1234567890")
+    expect(getRedaction(1)).toEqual("select * from users")
 
-		const reqText = uint8ArrayToStr(req.data as Uint8Array)
-		expect(reqText).toContain('{\"includeGroups\":false,\"includeLogins\":false,\"includeVerificationStatus\":false}')
-		expect(req.redactions.length).toEqual(2)
-		expect(getRedaction(0)).toEqual('Authorization: abc')
-		expect(getRedaction(1)).toEqual('false')
+    function getRedaction(index: number) {
+      return uint8ArrayToStr(
+        (req.data as Uint8Array).slice(
+          req.redactions[index].fromIndex,
+          req.redactions[index].toIndex
+        )
+      )
+    }
+  })
 
-		function getRedaction(index: number) {
-			return uint8ArrayToStr((req.data as Uint8Array).slice(req.redactions[index].fromIndex, req.redactions[index].toIndex))
-		}
-	})
-
-	describe('OPRF', () => {
-		it('should handle OPRF replacements', async() => {
-			const params: ProviderParams<'http'> = {
-				url: 'https://example.com/',
-				method: 'GET',
-				responseMatches: [
-					{
-						type: 'regex',
-						value: '<title>(?<domain>.+)<\\/title>',
-					}
-				],
-				responseRedactions: [
-					{
-						regex: '<title>(?<domain>.+)<\\/title>',
-						hash: 'oprf'
-					}
-				],
-			}
-			const res = Buffer.from(
-				'SFRUUC8xLjEgMjAwIE9LDQpBY2NlcHQtUmFuZ2VzOiBieXRlcw0KQWdlOiAzNzIxNDcNCkNhY2hlLUNvbnRyb2w6IG1heC1hZ2U9NjA0ODAwDQpDb250ZW50LVR5cGU6IHRleHQvaHRtbDsgY2hhcnNldD1VVEYtOA0KRGF0ZTogVGh1LCAyMSBOb3YgMjAyNCAwNTozOTo0NiBHTVQNCkV0YWc6ICIzMTQ3NTI2OTQ3Ig0KRXhwaXJlczogVGh1LCAyOCBOb3YgMjAyNCAwNTozOTo0NiBHTVQNCkxhc3QtTW9kaWZpZWQ6IFRodSwgMTcgT2N0IDIwMTkgMDc6MTg6MjYgR01UDQpTZXJ2ZXI6IEVDQWNjIChsYWMvNTVCNSkNClZhcnk6IEFjY2VwdC1FbmNvZGluZw0KWC1DYWNoZTogSElUDQpDb250ZW50LUxlbmd0aDogMTI1Ng0KQ29ubmVjdGlvbjogY2xvc2UNCg0KPCFkb2N0eXBlIGh0bWw+CjxodG1sPgo8aGVhZD4KICAgIDx0aXRsZT5FeGFtcGxlIERvbWFpbjwvdGl0bGU+CgogICAgPG1ldGEgY2hhcnNldD0idXRmLTgiIC8+CiAgICA8bWV0YSBodHRwLWVxdWl2PSJDb250ZW50LXR5cGUiIGNvbnRlbnQ9InRleHQvaHRtbDsgY2hhcnNldD11dGYtOCIgLz4KICAgIDxtZXRhIG5hbWU9InZpZXdwb3J0IiBjb250ZW50PSJ3aWR0aD1kZXZpY2Utd2lkdGgsIGluaXRpYWwtc2NhbGU9MSIgLz4KICAgIDxzdHlsZSB0eXBlPSJ0ZXh0L2NzcyI+CiAgICBib2R5IHsKICAgICAgICBiYWNrZ3JvdW5kLWNvbG9yOiAjZjBmMGYyOwogICAgICAgIG1hcmdpbjogMDsKICAgICAgICBwYWRkaW5nOiAwOwogICAgICAgIGZvbnQtZmFtaWx5OiAtYXBwbGUtc3lzdGVtLCBzeXN0ZW0tdWksIEJsaW5rTWFjU3lzdGVtRm9udCwgIlNlZ29lIFVJIiwgIk9wZW4gU2FucyIsICJIZWx2ZXRpY2EgTmV1ZSIsIEhlbHZldGljYSwgQXJpYWwsIHNhbnMtc2VyaWY7CiAgICAgICAgCiAgICB9CiAgICBkaXYgewogICAgICAgIHdpZHRoOiA2MDBweDsKICAgICAgICBtYXJnaW46IDVlbSBhdXRvOwogICAgICAgIHBhZGRpbmc6IDJlbTsKICAgICAgICBiYWNrZ3JvdW5kLWNvbG9yOiAjZmRmZGZmOwogICAgICAgIGJvcmRlci1yYWRpdXM6IDAuNWVtOwogICAgICAgIGJveC1zaGFkb3c6IDJweCAzcHggN3B4IDJweCByZ2JhKDAsMCwwLDAuMDIpOwogICAgfQogICAgYTpsaW5rLCBhOnZpc2l0ZWQgewogICAgICAgIGNvbG9yOiAjMzg0ODhmOwogICAgICAgIHRleHQtZGVjb3JhdGlvbjogbm9uZTsKICAgIH0KICAgIEBtZWRpYSAobWF4LXdpZHRoOiA3MDBweCkgewogICAgICAgIGRpdiB7CiAgICAgICAgICAgIG1hcmdpbjogMCBhdXRvOwogICAgICAgICAgICB3aWR0aDogYXV0bzsKICAgICAgICB9CiAgICB9CiAgICA8L3N0eWxlPiAgICAKPC9oZWFkPgoKPGJvZHk+CjxkaXY+CiAgICA8aDE+RXhhbXBsZSBEb21haW48L2gxPgogICAgPHA+VGhpcyBkb21haW4gaXMgZm9yIHVzZSBpbiBpbGx1c3RyYXRpdmUgZXhhbXBsZXMgaW4gZG9jdW1lbnRzLiBZb3UgbWF5IHVzZSB0aGlzCiAgICBkb21haW4gaW4gbGl0ZXJhdHVyZSB3aXRob3V0IHByaW9yIGNvb3JkaW5hdGlvbiBvciBhc2tpbmcgZm9yIHBlcm1pc3Npb24uPC9wPgogICAgPHA+PGEgaHJlZj0iaHR0cHM6Ly93d3cuaWFuYS5vcmcvZG9tYWlucy9leGFtcGxlIj5Nb3JlIGluZm9ybWF0aW9uLi4uPC9hPjwvcD4KPC9kaXY+CjwvYm9keT4KPC9odG1sPgo=',
-				'base64'
-			)
-			const redactedStr = await getRedactedStr(res, params)
-			// the transcript contained "Example Domain" in the title
-			// which should be replaced with the hash
-			expect(redactedStr).toContain('<title>AAAAAAAAAAAAAA</title>')
-		})
-
-		it('should handle OPRF replacements in a chunked res', async() => {
-			const params: ProviderParams<'http'> = {
-				url: 'https://example.com/',
-				method: 'GET',
-				responseMatches: [
-					{
-						type: 'regex',
-						value: '\"name\":\"(?<name>.+?)\"',
-					}
-				],
-				responseRedactions: [
-					{
-						regex: '\"name\":\"(?<name>.+?)\"',
-						hash: 'oprf'
-					}
-				],
-			}
-			const arr = strToUint8Array(RES_CHUNKED_PARTIAL_BODY)
-			const redactedStr = await getRedactedStr(arr, params)
-			// "name":"John" should be replaced with the hash
-			expect(redactedStr).toContain('"name":"AAAA"')
-		})
-
-		it('should gracefully error when OPRF spans multiple chunks', () => {
-			const params: ProviderParams<'http'> = {
-				url: 'https://example.com/',
-				method: 'GET',
-				responseMatches: [
-					{
-						type: 'regex',
-						value: '\"house\":\"(?<house>.+?)\"',
-					}
-				],
-				responseRedactions: [
-					{
-						regex: '\"house\":\"(?<house>.+?)\"',
-						hash: 'oprf'
-					}
-				],
-			}
-
-			const arr = strToUint8Array(RES_CHUNKED_PARTIAL_BODY)
-			expect(
-				() => getResponseRedactions!(arr, params, logger)
-			).toThrow(/cannot be performed/)
-		})
-	})
-
-	it('should replace secret params in URL correctly', () => {
-		const params: ProviderParams<'http'> = {
-			'body': '',
-			'geoLocation': '',
-			'method': 'POST',
-			'paramValues': {
-				'username': 'testyreclaim'
-			},
-			'responseMatches': [
-				{
-					'type': 'contains',
-					'value': '"userName":"{{username}}"'
-				}
-			],
-			'responseRedactions': [
-				{
-					'jsonPath': '$.userName',
-					'regex': '"userName":"(.*)"',
-					'xPath': ''
-				}
-			],
-			'url': 'https://www.kaggle.com/{{auth_token}}?request={{param_request}}'
-		}
-		const secretParams = {
-			'paramValues': {
-				'auth_token': '1234567890',
-				'param_request':'select * from users'
-			},
-			authorisationHeader: 'abc'
-		}
-
-		const req = createRequest(secretParams, params, logger)
-
-		const reqText = uint8ArrayToStr(req.data as Uint8Array)
-		expect(reqText).toContain('POST /1234567890?request=select * from users HTTP/1.1')
-		expect(req.redactions.length).toEqual(3)
-		expect(getRedaction(2)).toEqual('Authorization: abc')
-		expect(getRedaction(0)).toEqual('1234567890')
-		expect(getRedaction(1)).toEqual('select * from users')
-
-		function getRedaction(index: number) {
-			return uint8ArrayToStr((req.data as Uint8Array).slice(req.redactions[index].fromIndex, req.redactions[index].toIndex))
-		}
-	})
-
-	async function getRedactedStr(
-		plaintext: Uint8Array,
-		params: ProviderParams<'http'>,
-	) {
-		const hash = new Uint8Array(32)
-		const trans = await getBlocksToReveal(
-			[{ plaintext }],
-			body => getResponseRedactions!(body, params, logger),
-			async txt => ({
-				nullifier: hash,
-				dataLocation: { fromIndex: 0, length: txt.length },
-				responses: [],
-				mask: new Uint8Array(0),
-			})
-		)
-		assert(trans !== 'all', 'Expected not all blocks to be revealed')
-		const redactedStr = uint8ArrayToStr(trans[0].redactedPlaintext)
-		// the transcript contained "Example Domain" in the title
-		// which should be replaced with the hash
-		return redactedStr
-	}
+  async function getRedactedStr(
+    plaintext: Uint8Array,
+    params: ProviderParams<"http">
+  ) {
+    const hash = new Uint8Array(32)
+    const trans = await getBlocksToReveal(
+      [{ plaintext }],
+      body => getResponseRedactions!(body, params, logger),
+      async txt => ({
+        nullifier: hash,
+        dataLocation: { fromIndex: 0, length: txt.length },
+        responses: [],
+        mask: new Uint8Array(0),
+      })
+    )
+    assert(trans !== "all", "Expected not all blocks to be revealed")
+    const redactedStr = uint8ArrayToStr(trans[0].redactedPlaintext)
+    // the transcript contained "Example Domain" in the title
+    // which should be replaced with the hash
+    return redactedStr
+  }
 })
 
 function cloneObject<T>(obj: T): T {
-	// use node serialization to clone object
-	// to allow binary data to be cloned
-	return deserialize(serialize(obj))
+  // use node serialization to clone object
+  // to allow binary data to be cloned
+  return deserialize(serialize(obj))
 }
 
 const html = `
@@ -1282,7 +1444,8 @@ const html = `
   </body></html>
 `
 
-const chunkedResp = Buffer.from(`SFRUUC8xLjEgMjAwIE9LDQpEYXRlOiBNb24sIDA0IFNlcCAyMDIzIDE1OjQ0OjMzIEdNVA0KQ29u
+const chunkedResp = Buffer.from(
+  `SFRUUC8xLjEgMjAwIE9LDQpEYXRlOiBNb24sIDA0IFNlcCAyMDIzIDE1OjQ0OjMzIEdNVA0KQ29u
 dGVudC1UeXBlOiB0ZXh0L2h0bWw7IGNoYXJzZXQ9dXRmLTgNClRyYW5zZmVyLUVuY29kaW5nOiBj
 aHVua2VkDQpDb25uZWN0aW9uOiBjbG9zZQ0KQ2FjaGUtQ29udHJvbDogbWF4LWFnZT0wLCBwcml2
 YXRlLCBtdXN0LXJldmFsaWRhdGUNCkVUYWc6IFcvImI4NjA4ZTM5MTk0ZTZhMTk2ZGViMjZlZDRh
@@ -2406,4 +2569,6 @@ dCB0aGUgdXNlciBJRCB1c2luZyBzaWduZWQtaW4gdXNlcl9pZC4KZ2EoJ3NldCcsICdkaW1lbnNp
 b24xJywgZmFsc2UpOwpnYSgnc2V0JywgJ2RpbWVuc2lvbjInLCAndzIwMjEnKTsKZ2EoJ3NldCcs
 ICdkaW1lbnNpb24zJywgdHJ1ZSk7CmdhKCdzZXQnLCAnZGltZW5zaW9uNCcsIHRydWUpOwpnYSgn
 c2VuZCcsICdwYWdldmlldycpOwoKPC9zY3JpcHQ+CjwhLS0gRW5kIEdvb2dsZSBBbmFseXRpY3Mg
-LS0+CjwvYm9keT48L2h0bWw+DQowDQoNCg==`, 'base64')
+LS0+CjwvYm9keT48L2h0bWw+DQowDQoNCg==`,
+  "base64"
+)
