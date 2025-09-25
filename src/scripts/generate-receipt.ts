@@ -17,6 +17,7 @@ import {
   ProviderSecretParams,
   WS_PATHNAME,
 } from ".."
+import { ZKEngine } from "zk-symmetric-crypto-test"
 
 type ProviderReceiptGenerationParams<P extends ProviderName> = {
   name: P
@@ -33,7 +34,8 @@ const PRIVATE_KEY_HEX =
   "0x0123788edad59d7c013cdc85e4372f350f828e2cec62d9a2de4560e69aec7f89"
 
 export async function main<T extends ProviderName>(
-  receiptParams?: ProviderReceiptGenerationParams<T>
+  receiptParams?: ProviderReceiptGenerationParams<T>,
+  zkEngineFromRequest?: ZKEngine
 ) {
   const paramsJson = receiptParams ?? (await getInputParameters())
   if (!(paramsJson.name in providers)) {
@@ -54,11 +56,14 @@ export async function main<T extends ProviderName>(
 
   const zkArg = getCliArgument("zk")
   const zkEngine =
-    zkArg === "gnark"
+    zkEngineFromRequest ||
+    (zkArg === "gnark"
       ? "gnark"
       : zkArg === "bb" || zkArg === "barretenberg"
-      ? "barretenberg"
-      : "snarkjs"
+        ? "barretenberg"
+        : "snarkjs")
+
+  console.log("zkEngine in 'generate-receipt'", zkEngine)
 
   const receipt = await createClaimOnAttestor({
     name: paramsJson.name,

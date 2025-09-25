@@ -39,6 +39,7 @@ app.post("/api/generate-receipt", async (req: any, res: any) => {
       URL_PARAMS_GRD: body.issueNumber,
     }
 
+    const zkEngine = body.zkEngine
     // Read tossbank.json file
     let fileContents = await readFile("example/tossbank.json", "utf8")
 
@@ -57,7 +58,7 @@ app.post("/api/generate-receipt", async (req: any, res: any) => {
     // Set attestor URL
     process.env.ATTESTOR_URL = attestor
 
-    const result = await generateReceiptMain(receiptParams)
+    const result = await generateReceiptMain(receiptParams, zkEngine)
 
     res.json({
       success: true,
