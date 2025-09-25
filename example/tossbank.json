@@ -6,6 +6,7 @@
   ],
   "params": {
     "method": "GET",
+    "writeRedactionMode": "zk",
     "url": "https://api.tossbank.com/api-public/document/view/{{URL_PARAMS_1}}/{{URL_PARAMS_GRD}}",
     "responseMatches": [
       {
