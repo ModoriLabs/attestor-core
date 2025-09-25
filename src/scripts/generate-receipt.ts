@@ -26,8 +26,9 @@ type ProviderReceiptGenerationParams<P extends ProviderName> = {
 }
 
 // tmp change till we move OPRF attestor to prod
-const DEFAULT_ATTESTOR_HOST_PORT =
-  "wss://attestor-core-production.up.railway.app/ws"
+// const DEFAULT_ATTESTOR_HOST_PORT = "ws://localhost:8001/ws"
+const DEFAULT_ATTESTOR_HOST_PORT = "wss://attestor-core-noir.up.railway.app/ws"
+const BASE_ATTESTOR_URL = getEnvVariable("BASE_ATTESTOR_URL")
 const PRIVATE_KEY_HEX =
   getEnvVariable("PRIVATE_KEY_HEX") ||
   // demo private key
@@ -45,7 +46,10 @@ export async function main<T extends ProviderName>(
   assertValidateProviderParams<"http">(paramsJson.name, paramsJson.params)
 
   let attestorHostPort =
-    getCliArgument("attestor") || DEFAULT_ATTESTOR_HOST_PORT
+    getCliArgument("attestor") ||
+    BASE_ATTESTOR_URL ||
+    DEFAULT_ATTESTOR_HOST_PORT
+  console.log("attestorHostPort", attestorHostPort)
 
   let server: WebSocketServer | undefined
   if (attestorHostPort === "local") {

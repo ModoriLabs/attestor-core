@@ -3,6 +3,7 @@ import express from "express"
 import { readFile } from "fs/promises"
 import { main as generateReceiptMain } from "src/scripts/generate-receipt"
 import { logger } from "src/utils"
+import { getEnvVariable } from "./utils/env"
 
 const app = express()
 const PORT = process.env.API_PORT || 3000
@@ -23,8 +24,6 @@ app.use(express.json())
 // curl -X POST localhost:3000/api/generate-receipt
 app.post("/api/generate-receipt", async (req: any, res: any) => {
   try {
-    const BASE_ATTESTOR_URL = "wss://attestor-core-production.up.railway.app/ws"
-    const attestor = req.body?.attestor || BASE_ATTESTOR_URL
     const body = req.body || {}
     validateClientParamValues(body)
     // body should be like this:
@@ -54,9 +53,6 @@ app.post("/api/generate-receipt", async (req: any, res: any) => {
     const receiptParams = JSON.parse(fileContents)
 
     receiptParams.secretParams.paramValues = paramsValues
-
-    // Set attestor URL
-    process.env.ATTESTOR_URL = attestor
 
     const result = await generateReceiptMain(receiptParams, zkEngine)
 
