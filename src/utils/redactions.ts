@@ -1,20 +1,24 @@
-import { base64Encode } from '@bufbuild/protobuf/wire'
-import { concatenateUint8Arrays } from '@reclaimprotocol/tls'
-import type { ArraySlice, RedactedOrHashedArraySlice, TOPRFProofParams } from 'src/types'
+import { base64Encode } from "@bufbuild/protobuf/wire"
+import { concatenateUint8Arrays } from "@reclaimprotocol/tls"
+import type {
+  ArraySlice,
+  RedactedOrHashedArraySlice,
+  TOPRFProofParams,
+} from "src/types"
 
-export const REDACTION_CHAR = '*'
+export const REDACTION_CHAR = "*"
 export const REDACTION_CHAR_CODE = REDACTION_CHAR.charCodeAt(0)
 
 type SliceWithReveal<T> = {
-	block: T
-	redactedPlaintext: Uint8Array
-	/**
-	 * If the block has some TOPRF claims -- they'll be set here
-	 */
-	toprfs?: TOPRFProofParams[]
+  block: T
+  redactedPlaintext: Uint8Array
+  /**
+   * If the block has some TOPRF claims -- they'll be set here
+   */
+  toprfs?: TOPRFProofParams[]
 }
 
-export type RevealedSlices<T> = 'all' | SliceWithReveal<T>[]
+export type RevealedSlices<T> = "all" | SliceWithReveal<T>[]
 
 /**
  * Check if a redacted string is congruent with the original string.
@@ -22,39 +26,37 @@ export type RevealedSlices<T> = 'all' | SliceWithReveal<T>[]
  * @param original the original content
  */
 export function isRedactionCongruent<T extends string | Uint8Array>(
-	redacted: T,
-	original: T
+  redacted: T,
+  original: T
 ): boolean {
-	// eslint-disable-next-line unicorn/no-for-loop
-	for(let i = 0;i < redacted.length;i++) {
-		const element = redacted[i]
-		const areSame = element === original[i]
-			|| (typeof element === 'string' && element === REDACTION_CHAR)
-			|| (typeof element === 'number' && element === REDACTION_CHAR_CODE)
-		if(!areSame) {
-			return false
-		}
-	}
+  // eslint-disable-next-line unicorn/no-for-loop
+  for (let i = 0; i < redacted.length; i++) {
+    const element = redacted[i]
+    const areSame =
+      element === original[i] ||
+      (typeof element === "string" && element === REDACTION_CHAR) ||
+      (typeof element === "number" && element === REDACTION_CHAR_CODE)
+    if (!areSame) {
+      return false
+    }
+  }
 
-	return true
+  return true
 }
 
 /**
  * Is the string fully redacted?
  */
 export function isFullyRedacted<T extends string | Uint8Array>(
-	redacted: T
+  redacted: T
 ): boolean {
-	for(const element of redacted) {
-		if(
-			element !== REDACTION_CHAR
-			&& element !== REDACTION_CHAR_CODE
-		) {
-			return false
-		}
-	}
+  for (const element of redacted) {
+    if (element !== REDACTION_CHAR && element !== REDACTION_CHAR_CODE) {
+      return false
+    }
+  }
 
-	return true
+  return true
 }
 
 /**
@@ -76,109 +78,104 @@ export function isFullyRedacted<T extends string | Uint8Array>(
  * @returns blocks to reveal
  */
 export async function getBlocksToReveal<T extends { plaintext: Uint8Array }>(
-	blocks: T[],
-	redact: (total: Uint8Array) => RedactedOrHashedArraySlice[],
-	performOprf: (plaintext: Uint8Array) => Promise<TOPRFProofParams>
+  blocks: T[],
+  redact: (total: Uint8Array) => RedactedOrHashedArraySlice[],
+  performOprf: (plaintext: Uint8Array) => Promise<TOPRFProofParams>
 ) {
-	const slicesWithReveal: SliceWithReveal<T>[] = blocks.map(block => ({
-		block,
-		// copy the plaintext to avoid mutating the original
-		redactedPlaintext: new Uint8Array(block.plaintext)
-	}))
-	const total = concatenateUint8Arrays(
-		blocks.map(b => b.plaintext)
-	)
+  const slicesWithReveal: SliceWithReveal<T>[] = blocks.map(block => ({
+    block,
+    // copy the plaintext to avoid mutating the original
+    redactedPlaintext: new Uint8Array(block.plaintext),
+  }))
+  const total = concatenateUint8Arrays(blocks.map(b => b.plaintext))
 
-	const redactions = redact(total)
+  const redactions = redact(total)
 
-	if(!redactions.length) {
-		return 'all'
-	}
+  if (!redactions.length) {
+    return "all"
+  }
 
-	let blockIdx = 0
-	let cursorInBlock = 0
-	let cursor = 0
+  let blockIdx = 0
+  let cursorInBlock = 0
+  let cursor = 0
 
-	for(const redaction of redactions) {
-		await redactBlocks(redaction)
-	}
+  for (const redaction of redactions) {
+    await redactBlocks(redaction)
+  }
 
-	// only reveal blocks that have some data to reveal,
-	// or are completely plaintext
-	return slicesWithReveal
-		.filter(s => !isFullyRedacted(s.redactedPlaintext))
+  // only reveal blocks that have some data to reveal,
+  // or are completely plaintext
+  return slicesWithReveal.filter(s => !isFullyRedacted(s.redactedPlaintext))
 
-	async function redactBlocks(slice: RedactedOrHashedArraySlice) {
-		while(cursor < slice.fromIndex) {
-			advance()
-		}
+  async function redactBlocks(slice: RedactedOrHashedArraySlice) {
+    while (cursor < slice.fromIndex) {
+      advance()
+    }
 
-		if(slice.hash) {
-			const plaintext = total.slice(slice.fromIndex, slice.toIndex)
-			const {
-				nullifier, responses, mask
-			} = await performOprf(plaintext)
+    if (slice.hash) {
+      const plaintext = total.slice(slice.fromIndex, slice.toIndex)
+      const { nullifier, responses, mask } = await performOprf(plaintext)
 
-			// set the TOPRF claim on the first blocks this
-			// redaction covers
-			const toprf: TOPRFProofParams = {
-				nullifier,
-				responses,
-				dataLocation: {
-					fromIndex: cursorInBlock,
-					length: slice.toIndex - slice.fromIndex
-				},
-				mask
-			}
-			const block = slicesWithReveal[blockIdx]
-			block.toprfs ||= []
-			block.toprfs.push(toprf)
+      // set the TOPRF claim on the first blocks this
+      // redaction covers
+      const toprf: TOPRFProofParams = {
+        nullifier,
+        responses,
+        dataLocation: {
+          fromIndex: cursorInBlock,
+          length: slice.toIndex - slice.fromIndex,
+        },
+        mask,
+      }
+      const block = slicesWithReveal[blockIdx]
+      block.toprfs ||= []
+      block.toprfs.push(toprf)
 
-			const nullifierStr = binaryHashToStr(
-				nullifier,
-				toprf.dataLocation!.length
-			)
+      const nullifierStr = binaryHashToStr(
+        nullifier,
+        toprf.dataLocation!.length
+      )
 
-			let i = 0
-			while(cursor < slice.toIndex) {
-				slicesWithReveal[blockIdx].redactedPlaintext[cursorInBlock]
-					= nullifierStr.charCodeAt(i)
-				advance()
+      let i = 0
+      while (cursor < slice.toIndex) {
+        slicesWithReveal[blockIdx].redactedPlaintext[cursorInBlock] =
+          nullifierStr.charCodeAt(i)
+        advance()
 
-				i += 1
-			}
-		}
+        i += 1
+      }
+    }
 
-		while(cursor < slice.toIndex) {
-			slicesWithReveal[blockIdx]
-				.redactedPlaintext[cursorInBlock] = REDACTION_CHAR_CODE
-			advance()
-		}
-	}
+    while (cursor < slice.toIndex) {
+      slicesWithReveal[blockIdx].redactedPlaintext[cursorInBlock] =
+        REDACTION_CHAR_CODE
+      advance()
+    }
+  }
 
-	function advance() {
-		cursor += 1
-		cursorInBlock += 1
-		if(cursorInBlock >= blocks[blockIdx].plaintext.length) {
-			blockIdx += 1
-			cursorInBlock = 0
-		}
-	}
+  function advance() {
+    cursor += 1
+    cursorInBlock += 1
+    if (cursorInBlock >= blocks[blockIdx].plaintext.length) {
+      blockIdx += 1
+      cursorInBlock = 0
+    }
+  }
 }
 
 /**
  * Redact the following slices from the total
  */
 export function redactSlices(total: Uint8Array, slices: ArraySlice[]) {
-	const redacted = new Uint8Array(total)
+  const redacted = new Uint8Array(total)
 
-	for(const slice of slices) {
-		for(let i = slice.fromIndex;i < slice.toIndex;i++) {
-			redacted[i] = REDACTION_CHAR_CODE
-		}
-	}
+  for (const slice of slices) {
+    for (let i = slice.fromIndex; i < slice.toIndex; i++) {
+      redacted[i] = REDACTION_CHAR_CODE
+    }
+  }
 
-	return redacted
+  return redacted
 }
 
 /**
@@ -187,5 +184,5 @@ export function redactSlices(total: Uint8Array, slices: ArraySlice[]) {
  * '0' characters. If it's longer, it will be truncated.
  */
 export function binaryHashToStr(hash: Uint8Array, expLength: number) {
-	return base64Encode(hash).padEnd(expLength, '0').slice(0, expLength)
+  return base64Encode(hash).padEnd(expLength, "0").slice(0, expLength)
 }

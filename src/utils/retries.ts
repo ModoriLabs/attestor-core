@@ -1,9 +1,9 @@
-import { Logger } from 'src/types'
+import { Logger } from "src/types"
 
 type RetryLoopOptions = {
-	maxRetries?: number
-	logger: Logger
-	shouldRetry: (error: Error) => boolean
+  maxRetries?: number
+  logger: Logger
+  shouldRetry: (error: Error) => boolean
 }
 
 /**
@@ -11,31 +11,27 @@ type RetryLoopOptions = {
  * based on specified options.
  */
 export async function executeWithRetries<T>(
-	code: (attempt: number) => Promise<T>,
-	{
-		maxRetries = 3,
-		shouldRetry,
-		logger,
-	}: RetryLoopOptions
+  code: (attempt: number) => Promise<T>,
+  { maxRetries = 3, shouldRetry, logger }: RetryLoopOptions
 ) {
-	let retries = 0
-	while(retries < maxRetries) {
-		try {
-			const result = await code(retries)
-			return result
-		} catch(err) {
-			retries += 1
-			if(retries >= maxRetries) {
-				throw err
-			}
+  let retries = 0
+  while (retries < maxRetries) {
+    try {
+      const result = await code(retries)
+      return result
+    } catch (err) {
+      retries += 1
+      if (retries >= maxRetries) {
+        throw err
+      }
 
-			if(!shouldRetry(err)) {
-				throw err
-			}
+      if (!shouldRetry(err)) {
+        throw err
+      }
 
-			logger.info({ err, retries }, 'retrying failed operation')
-		}
-	}
+      logger.info({ err, retries }, "retrying failed operation")
+    }
+  }
 
-	throw new Error('retries exhausted')
+  throw new Error("retries exhausted")
 }

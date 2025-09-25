@@ -1,12 +1,16 @@
-import type { TLSConnectionOptions } from '@reclaimprotocol/tls'
-import type { ProviderClaimData } from 'src/proto/api'
-import type { ArraySlice, Logger, RedactedOrHashedArraySlice } from 'src/types/general'
-import type { ProvidersConfig } from 'src/types/providers.gen'
-import type { Transcript } from 'src/types/tunnel'
+import type { TLSConnectionOptions } from "@reclaimprotocol/tls"
+import type { ProviderClaimData } from "src/proto/api"
+import type {
+  ArraySlice,
+  Logger,
+  RedactedOrHashedArraySlice,
+} from "src/types/general"
+import type { ProvidersConfig } from "src/types/providers.gen"
+import type { Transcript } from "src/types/tunnel"
 
 export type AttestorData = {
-	id: string
-	url: string
+  id: string
+  url: string
 }
 
 type CreateRequestResult = {
@@ -23,13 +27,17 @@ type CreateRequestResult = {
 
 export type ProviderName = keyof ProvidersConfig
 
-export type ProviderParams<T extends ProviderName> = ProvidersConfig[T]['parameters']
+export type ProviderParams<T extends ProviderName> =
+  ProvidersConfig[T]["parameters"]
 
-export type ProviderSecretParams<T extends ProviderName> = ProvidersConfig[T]['secretParameters']
+export type ProviderSecretParams<T extends ProviderName> =
+  ProvidersConfig[T]["secretParameters"]
 
-export type RedactionMode = 'key-update' | 'zk'
+export type RedactionMode = "key-update" | "zk"
 
-export type ProviderField<Params, SecretParams, T> = T | ((params: Params, secretParams?: SecretParams) => T)
+export type ProviderField<Params, SecretParams, T> =
+  | T
+  | ((params: Params, secretParams?: SecretParams) => T)
 
 /**
  * Generic interface for a provider that can be used to verify
@@ -44,7 +52,7 @@ export type ProviderField<Params, SecretParams, T> = T | ((params: Params, secre
 export interface Provider<
   N extends ProviderName,
   Params = ProviderParams<N>,
-  SecretParams = ProviderSecretParams<N>
+  SecretParams = ProviderSecretParams<N>,
 > {
   /**
    * host:port to connect to for this provider;
@@ -65,7 +73,11 @@ export interface Provider<
   geoLocation?: ProviderField<Params, SecretParams, string | undefined>
 
   /** extra options to pass to the client like root CA certificates */
-  additionalClientOptions?: ProviderField<Params, SecretParams, TLSConnectionOptions | undefined>
+  additionalClientOptions?: ProviderField<
+    Params,
+    SecretParams,
+    TLSConnectionOptions | undefined
+  >
   /**
    * default redaction mode to use. If not specified,
    * the default is 'key-update'.
@@ -75,7 +87,11 @@ export interface Provider<
    *
    * @default 'key-update'
    */
-  writeRedactionMode?: ProviderField<Params, SecretParams, RedactionMode | undefined>
+  writeRedactionMode?: ProviderField<
+    Params,
+    SecretParams,
+    RedactionMode | undefined
+  >
   /** generate the raw request to be sent to through the TLS receipt */
   createRequest(
     secretParams: SecretParams,
@@ -106,8 +122,8 @@ export interface Provider<
    * @param params the parameters to verify the receipt against.
    *  Eg. `{"email": "abcd@gmail.com"}`
    * @returns sucessful verification or throws an error message.
-	 *  Optionally return parameters extracted from the receipt
-	 *  that will then be included in the claim context
+   *  Optionally return parameters extracted from the receipt
+   *  that will then be included in the claim context
    * */
   assertValidProviderReceipt(
     receipt: Transcript<Uint8Array>,
@@ -118,40 +134,40 @@ export interface Provider<
 
 export type ProofGenerationStep =
   | {
-    // initialise session on attestor
-    // using initialiseSession RPC
-    name: 'connecting'
-  }
+      // initialise session on attestor
+      // using initialiseSession RPC
+      name: "connecting"
+    }
   | {
-    // once connection to attestor
-    // is established, send the
-    // request data to the attestor
-    name: 'sending-request-data'
-  }
+      // once connection to attestor
+      // is established, send the
+      // request data to the attestor
+      name: "sending-request-data"
+    }
   | {
-    // once all the data is sent,
-    // wait for the server's response
-    // to be relayed back to the client
-    name: 'waiting-for-response'
-  }
+      // once all the data is sent,
+      // wait for the server's response
+      // to be relayed back to the client
+      name: "waiting-for-response"
+    }
   | {
-    // For the proofs of each block to be
-    // generated, update on the progress
-    name: 'generating-zk-proofs'
-    proofsDone: number
-    proofsTotal: number
-    /**
-     * approximate time left in seconds.
-     * Only computed after the first block
-     * is done
-     * */
-    approxTimeLeftS?: number
-  }
+      // For the proofs of each block to be
+      // generated, update on the progress
+      name: "generating-zk-proofs"
+      proofsDone: number
+      proofsTotal: number
+      /**
+       * approximate time left in seconds.
+       * Only computed after the first block
+       * is done
+       * */
+      approxTimeLeftS?: number
+    }
   | {
-    // wait for the attestor to verify
-    // said proofs & receipt
-    name: 'waiting-for-verification'
-  }
+      // wait for the attestor to verify
+      // said proofs & receipt
+      name: "waiting-for-verification"
+    }
 
 type StepData = {
   timestampS: number
@@ -160,17 +176,17 @@ type StepData = {
 }
 
 export type CreateStep =
-  | ({ name: 'creating' } & StepData)
+  | ({ name: "creating" } & StepData)
   | ({
-    name: 'attestor-progress'
-    currentAttestor: AttestorData
-    step: ProofGenerationStep
-  } & StepData)
+      name: "attestor-progress"
+      currentAttestor: AttestorData
+      step: ProofGenerationStep
+    } & StepData)
   | {
-      name: 'attestor-done'
+      name: "attestor-done"
       timestampS: number
       epoch: number
       attestorsLeft: AttestorData[]
       claimData: ProviderClaimData
       signaturesDone: string[]
-    };
+    }

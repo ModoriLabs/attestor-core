@@ -337,4 +337,4 @@ export const avsDirectoryABI = [
     ],
     anonymous: false,
   },
-];
+]
