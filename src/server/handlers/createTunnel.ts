@@ -19,6 +19,7 @@ export const createTunnel: RPCHandler<"createTunnel"> = async (
 
   try {
     let cancelBgp: (() => void) | undefined
+    let tunnel: Awaited<ReturnType<typeof makeTcpTunnel>> | undefined
     if (client.bgpListener) {
       // listen to all IPs for the host -- in case any of them
       // has a BGP announcement overlap, we'll close the tunnel
@@ -42,7 +43,7 @@ export const createTunnel: RPCHandler<"createTunnel"> = async (
       logger.debug({ ips }, "checking for BGP overlap")
     }
 
-    const tunnel = await makeTcpTunnel({
+    tunnel = await makeTcpTunnel({
       ...opts,
       logger,
       onMessage(message) {
@@ -85,7 +86,7 @@ export const createTunnel: RPCHandler<"createTunnel"> = async (
       },
     })
 
-    client.tunnels[id] = tunnel
+    client.tunnels[id] = tunnel!
 
     return {}
   } catch (err) {
