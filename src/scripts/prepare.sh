@@ -1,2 +1,2 @@
-tsc
-tsc-alias
+# tsc
+# tsc-alias
