@@ -36,7 +36,8 @@ const PRIVATE_KEY_HEX =
 
 export async function main<T extends ProviderName>(
   receiptParams?: ProviderReceiptGenerationParams<T>,
-  zkEngineFromRequest?: ZKEngine
+  zkEngineFromRequest?: ZKEngine,
+  attestorUrlOverride?: string
 ) {
   const paramsJson = receiptParams ?? (await getInputParameters())
   if (!(paramsJson.name in providers)) {
@@ -46,6 +47,7 @@ export async function main<T extends ProviderName>(
   assertValidateProviderParams<"http">(paramsJson.name, paramsJson.params)
 
   let attestorHostPort =
+    attestorUrlOverride ||
     getCliArgument("attestor") ||
     BASE_ATTESTOR_URL ||
     DEFAULT_ATTESTOR_HOST_PORT
@@ -149,7 +151,12 @@ async function getInputParameters(): Promise<
 }
 
 if (require.main === module) {
-  main().catch(err => {
-    console.error("error in receipt gen", err)
-  })
+  main()
+    .then(() => {
+      process.exit(0)
+    })
+    .catch(err => {
+      console.error("error in receipt gen", err)
+      process.exit(1)
+    })
 }

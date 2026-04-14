@@ -1,3 +1,6 @@
+import cors from "cors"
+import express from "express"
+import { readFile } from "fs/promises"
 import { createServer as createHttpServer, IncomingMessage } from "http"
 import serveStatic from "serve-static"
 import { API_SERVER_PORT, BROWSER_RPC_PATHNAME, WS_PATHNAME } from "src/config"
@@ -15,30 +18,95 @@ import { WebSocket, WebSocketServer } from "ws"
 const PORT = +(getEnvVariable("PORT") || API_SERVER_PORT)
 const DISABLE_BGP_CHECKS = getEnvVariable("DISABLE_BGP_CHECKS") === "1"
 
+function createExpressApp(port: number) {
+  const app = express()
+  app.use(cors())
+  app.use(express.json())
+
+  app.post("/api/generate-receipt", async (req: any, res: any) => {
+    try {
+      const body = req.body || {}
+      if (!body.issuedDate) {
+        throw new Error("issuedDate is required")
+      }
+      if (!body.issueNumber) {
+        throw new Error("issueNumber is required")
+      }
+
+      const paramsValues = {
+        URL_PARAMS_1: body.issuedDate,
+        URL_PARAMS_GRD: body.issueNumber,
+      }
+
+      const zkEngine = body.zkEngine
+      let fileContents = await readFile("example/tossbank.json", "utf8")
+
+      for (const variable in process.env) {
+        fileContents = fileContents.replace(
+          `{{${variable}}}`,
+          process.env[variable]!
+        )
+      }
+
+      const receiptParams = JSON.parse(fileContents)
+      receiptParams.secretParams.paramValues = paramsValues
+
+      const attestorUrl = `ws://localhost:${port}${WS_PATHNAME}`
+      // dynamic import to avoid circular dependency:
+      // create-server -> generate-receipt -> src/server -> create-server
+      const { main: generateReceiptMain } = await import(
+        "../scripts/generate-receipt.js"
+      )
+      const result = await generateReceiptMain(
+        receiptParams,
+        zkEngine,
+        attestorUrl
+      )
+
+      res.json({
+        success: true,
+        data: {
+          provider: result.provider,
+          receipt: result.receipt,
+          extractedParameters: result.extractedParameters,
+          transcript: result.transcript,
+        },
+      })
+    } catch (error) {
+      console.error("Detailed error:", error)
+      LOGGER.error("Error generating receipt:", error)
+
+      res.status(500).json({
+        success: false,
+        error: "Failed to generate receipt",
+        message: error instanceof Error ? error.message : "Unknown error",
+        stack: error instanceof Error ? error.stack : undefined,
+      })
+    }
+  })
+
+  app.get("/health", (req, res) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() })
+  })
+
+  return app
+}
+
 /**
  * Creates the WebSocket API server,
  * creates a fileserver to serve the browser RPC client,
+ * serves the REST API endpoints,
  * and listens on the given port.
  */
 export async function createServer(port = PORT) {
-  const http = createHttpServer()
+  const app = createExpressApp(port)
   const serveBrowserRpc = serveStatic("browser", { index: ["index.html"] })
   const bgpListener = !DISABLE_BGP_CHECKS
     ? createBgpListener(LOGGER.child({ service: "bgp-listener" }))
     : undefined
 
-  const wss = new WebSocketServer({ noServer: true })
-  http.on("upgrade", handleUpgrade.bind(wss))
-  http.on("request", (req, res) => {
-    // simple way to serve files at the browser RPC path
-    if (!req.url?.startsWith(BROWSER_RPC_PATHNAME)) {
-      res.statusCode = 404
-      res.end("Not found")
-      return
-    }
-
-    req.url = req.url.slice(BROWSER_RPC_PATHNAME.length) || "/"
-
+  // Use express to handle HTTP requests, including browser-rpc static files
+  app.use(BROWSER_RPC_PATHNAME, (req, res, next) => {
     serveBrowserRpc(req, res, err => {
       if (err) {
         LOGGER.error({ err, url: req.url }, "Failed to serve file")
@@ -48,6 +116,11 @@ export async function createServer(port = PORT) {
       res.end(err?.message ?? "Not found")
     })
   })
+
+  const http = createHttpServer(app)
+
+  const wss = new WebSocketServer({ noServer: true })
+  http.on("upgrade", handleUpgrade.bind(wss))
 
   // wait for us to start listening
   http.listen(port)
